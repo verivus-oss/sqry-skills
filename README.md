@@ -33,7 +33,16 @@ sqry is a semantic code search tool that parses code like a compiler to understa
 - **Graph analysis**: callers, callees, call paths, dependency impact, cycles, duplicates, dead code
 - **Query language**: `kind:function name:*auth*`, `callers:authenticate`, `impl:Serialize`
 
-Install: `cargo install sqry-cli`
+Install for MCP usage:
+
+```bash
+# Recommended: signed release installer
+curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
+
+# Fallback: build from source
+cargo install sqry-cli
+cargo install sqry-mcp
+```
 
 ## License
 

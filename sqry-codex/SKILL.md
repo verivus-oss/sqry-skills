@@ -2,7 +2,7 @@
 name: sqry-codex
 version: 4.8.16
 description: |
-  Setup and workflow for using sqry semantic code search as an MCP server with OpenAI Codex CLI. Covers installation, MCP configuration via codex.json, and recommended patterns for code analysis tasks. Install this skill to give Codex access to sqry's 33 AST-based code analysis tools.
+  Setup and workflow for using sqry semantic code search as an MCP server with OpenAI Codex CLI. Covers installation, MCP configuration via `~/.codex/config.toml`, and recommended patterns for code analysis tasks. Install this skill to give Codex access to sqry's 33 AST-based code analysis tools.
 ---
 
 # sqry for OpenAI Codex
@@ -14,10 +14,14 @@ This skill configures the Codex CLI agent to use sqry's MCP server for AST-based
 ### 1. Install sqry
 
 ```bash
-# From crates.io
-cargo install sqry-cli
+# Recommended: signed release installer
+curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
 
-# From Homebrew (macOS/Linux)
+# Fallback: build from source
+cargo install sqry-cli
+cargo install sqry-mcp
+
+# Alternative package manager
 brew install verivus-oss/sqry/sqry
 ```
 
@@ -30,20 +34,22 @@ sqry index .
 
 ### 3. Configure MCP server
 
-Add to your project's `.codex/codex.json`:
+Recommended:
 
-```json
-{
-  "mcpServers": {
-    "sqry": {
-      "command": "sqry",
-      "args": ["mcp", "--path", "."]
-    }
-  }
-}
+```bash
+sqry mcp setup --tool codex
+sqry mcp status
 ```
 
-Or globally at `~/.codex/codex.json`.
+This writes a global entry to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.sqry]
+command = "/absolute/path/to/sqry-mcp"
+```
+
+Codex uses global MCP config and CWD-based workspace discovery. Start Codex
+from the project directory you want to analyze.
 
 ### 4. Verify
 
@@ -108,7 +114,7 @@ Use `rg` for literal text search. Use sqry for everything structural.
 
 ## Troubleshooting
 
-- **No tools visible**: Restart Codex after adding MCP config
+- **No tools visible**: Restart Codex after running `sqry mcp setup --tool codex`
 - **Empty results**: Run `sqry index .` to build the index
 - **Stale results**: Run `sqry index --force .` to force rebuild
 - **Check health**: Call `mcp__sqry__get_index_status`

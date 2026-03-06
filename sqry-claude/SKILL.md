@@ -14,10 +14,14 @@ This skill configures Claude Code to use sqry's MCP server for AST-based semanti
 ### 1. Install sqry
 
 ```bash
-# From crates.io
-cargo install sqry-cli
+# Recommended: signed release installer
+curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
 
-# From Homebrew (macOS/Linux)
+# Fallback: build from source
+cargo install sqry-cli
+cargo install sqry-mcp
+
+# Alternative package manager
 brew install verivus-oss/sqry/sqry
 ```
 
@@ -30,27 +34,28 @@ sqry index .
 
 ### 3. Configure MCP server
 
-Add to your project's `.claude/settings.json` (or globally at `~/.claude/settings.json`):
+Recommended:
 
-```json
-{
-  "mcpServers": {
-    "sqry": {
-      "command": "sqry",
-      "args": ["mcp", "--path", "."]
-    }
-  }
-}
+```bash
+sqry mcp setup --tool claude
+sqry mcp status
 ```
 
-Or with an absolute path:
+This writes a Claude Code entry in `.claude.json` or `~/.claude.json`
+pointing to `sqry-mcp`. Claude defaults to per-project configuration with
+`SQRY_MCP_WORKSPACE_ROOT` pinned to the current repository.
+
+Manual config example:
 
 ```json
 {
   "mcpServers": {
     "sqry": {
-      "command": "sqry",
-      "args": ["mcp", "--path", "/path/to/your/project"]
+      "type": "stdio",
+      "command": "/absolute/path/to/sqry-mcp",
+      "env": {
+        "SQRY_MCP_WORKSPACE_ROOT": "/path/to/your/project"
+      }
     }
   }
 }
@@ -60,7 +65,7 @@ Or with an absolute path:
 
 After restarting Claude Code, tools should appear with the `mcp__sqry__` prefix. Test with:
 
-> "Use sqry to show the graph stats for this project"
+> "Use sqry to show graph stats for this project"
 
 This should invoke `mcp__sqry__get_graph_stats` and return node/edge counts.
 
@@ -138,7 +143,7 @@ Claude uses:
 
 ## Troubleshooting
 
-- **No tools visible**: Restart Claude Code after adding MCP config
+- **No tools visible**: Restart Claude Code after running `sqry mcp setup --tool claude`
 - **Empty results**: Run `sqry index .` to build/rebuild the index
 - **Stale results**: Run `sqry index --force .` to force rebuild
 - **Check health**: Ask Claude to call `mcp__sqry__get_index_status`

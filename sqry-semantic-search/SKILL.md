@@ -43,16 +43,18 @@ sqry finds code by *what it is and does*:
 
 ## Setup
 
-### Install sqry
+### Install sqry for MCP usage
 
 ```bash
-# From crates.io
+# Recommended: signed release installer
+curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
+
+# Fallback: build from source
 cargo install sqry-cli
+cargo install sqry-mcp
 
-# From Homebrew
+# Alternative package managers
 brew install verivus-oss/sqry/sqry
-
-# From AUR (Arch Linux)
 yay -S sqry-bin
 ```
 
@@ -66,9 +68,21 @@ sqry index .
 sqry index --force .
 ```
 
-### Configure as MCP server
+### Configure your agent
 
-See the agent-specific skills (sqry-claude, sqry-codex, sqry-gemini) for per-agent MCP configuration.
+Use `sqry mcp setup` to write agent-specific config entries that point to the
+`sqry-mcp` binary:
+
+```bash
+sqry mcp setup --tool claude
+sqry mcp setup --tool codex
+sqry mcp setup --tool gemini
+sqry mcp status
+```
+
+Claude Code uses `.claude.json` or `~/.claude.json`.
+Codex uses `~/.codex/config.toml`.
+Gemini uses `~/.gemini/settings.json`.
 
 ## MCP Tools Reference
 
@@ -81,7 +95,7 @@ The sqry MCP server provides 33 tools. Tool names use the `mcp__sqry__` prefix i
 | `semantic_search` | Find symbols by query | `query` |
 | `hierarchical_search` | RAG-optimized grouped results | `query` |
 | `explain_code` | Get symbol details + relations | `file_path`, `symbol_name` |
-| `search_similar` | Find similar symbols | `reference.file_path`, `reference.symbol_name` |
+| `search_similar` | Find similar symbols | `reference` |
 | `pattern_search` | Find symbols by name substring | `pattern` |
 | `get_workspace_symbols` | Fuzzy name search with ranking | `query` |
 
@@ -118,7 +132,7 @@ The sqry MCP server provides 33 tools. Tool names use the `mcp__sqry__` prefix i
 
 | Tool | Purpose | Required Params |
 |------|---------|-----------------|
-| `semantic_diff` | Compare code versions | `base.ref`, `target.ref` |
+| `semantic_diff` | Compare code versions | `base`, `target` |
 | `find_duplicates` | Find duplicate code patterns | (none required) |
 | `find_cycles` | Find circular dependencies | (none required) |
 | `find_unused` | Find unused/dead code | (none required) |

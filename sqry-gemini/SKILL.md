@@ -14,10 +14,14 @@ This skill configures the Gemini CLI agent to use sqry's MCP server for AST-base
 ### 1. Install sqry
 
 ```bash
-# From crates.io
-cargo install sqry-cli
+# Recommended: signed release installer
+curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
 
-# From Homebrew (macOS/Linux)
+# Fallback: build from source
+cargo install sqry-cli
+cargo install sqry-mcp
+
+# Alternative package manager
 brew install verivus-oss/sqry/sqry
 ```
 
@@ -30,20 +34,29 @@ sqry index .
 
 ### 3. Configure MCP server
 
-Add to your project's `.gemini/settings.json`:
+Recommended:
+
+```bash
+sqry mcp setup --tool gemini
+sqry mcp status
+```
+
+This writes a global entry to `~/.gemini/settings.json`:
 
 ```json
 {
   "mcpServers": {
     "sqry": {
-      "command": "sqry",
-      "args": ["mcp", "--path", "."]
+      "command": "/absolute/path/to/sqry-mcp",
+      "args": [],
+      "env": {}
     }
   }
 }
 ```
 
-Or globally at `~/.gemini/settings.json`.
+Gemini uses CWD-based workspace discovery by default. Start Gemini from the
+project directory you want to analyze.
 
 ### 4. Verify
 
@@ -122,7 +135,7 @@ Use grep/rg for literal text search. Use sqry for everything structural.
 
 ## Troubleshooting
 
-- **No tools visible**: Restart Gemini CLI after adding MCP config
+- **No tools visible**: Restart Gemini CLI after running `sqry mcp setup --tool gemini`
 - **Empty results**: Run `sqry index .` to build the index
 - **Stale results**: Run `sqry index --force .` to force rebuild
 - **Check health**: Call `mcp__sqry__get_index_status`
