@@ -57,6 +57,49 @@ After restarting Codex, test with:
 
 > "Use sqry to show graph stats for this project"
 
+## Skill Dependency
+
+This skill covers Codex CLI setup and integration patterns. For comprehensive tool selection guidance, query syntax, disambiguation strategies, output size management, and security audit workflows, **also load the `sqry-semantic-search` skill**. That skill is the primary reference for how to use sqry effectively.
+
+If you find yourself unsure which tool to use, or getting empty/wrong results, consult sqry-semantic-search before retrying.
+
+## Quick Tool Selection
+
+**I know the symbol name and want to...**
+- See its definition → `mcp__sqry__get_definition`
+- See who calls it → `mcp__sqry__direct_callers` (depth=1) or `mcp__sqry__relation_query` (multi-depth)
+- See what it calls → `mcp__sqry__direct_callees`
+- See what breaks if I change it → `mcp__sqry__dependency_impact`
+- Understand it with context → `mcp__sqry__explain_code`
+
+**I want to search for symbols...**
+- By name substring → `mcp__sqry__pattern_search`
+- By kind/visibility/language → `mcp__sqry__semantic_search`
+- With RAG-optimized grouping → `mcp__sqry__hierarchical_search`
+
+**I want to analyze the codebase...**
+- Circular dependencies → `mcp__sqry__find_cycles`
+- Dead code → `mcp__sqry__find_unused`
+- Change impact → `mcp__sqry__dependency_impact`
+- Trace call path A→B → `mcp__sqry__trace_path`
+
+## Handling Ambiguous Symbols
+
+When using `mcp__sqry__direct_callers`, `mcp__sqry__direct_callees`, or `mcp__sqry__call_hierarchy` with common names (`handle`, `new`, `init`, `process`, `run`), the tool may fail or return wrong results.
+
+**Always disambiguate** by providing `file_path`:
+
+```json
+{
+  "symbol": "handle",
+  "file_path": "src/api/router.rs"
+}
+```
+
+Or use a qualified name: `"symbol": "UserService::authenticate"`
+
+If relation tools fail, fall back to `mcp__sqry__get_references` with a `path` filter to scope results.
+
 ## Tool Naming in Codex
 
 Codex uses the `mcp__sqry__` prefix for sqry MCP tools:

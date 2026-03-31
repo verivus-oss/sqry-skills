@@ -378,6 +378,78 @@ sqry query "impl:Debug kind:struct lang:rust"
 }
 ```
 
+## Security Audit Queries
+
+### Find Dangerous Sinks
+
+```json
+// Code execution
+{ "query": "name~=^(exec|eval|spawn|system|popen|subprocess)$" }
+
+// SQL injection targets
+{ "query": "name~=.*(raw_query|execute_sql|query_raw).*" }
+
+// Command injection targets
+{ "query": "name~=.*(run_command|shell_exec|os_system).*" }
+
+// File system operations
+{ "query": "name~=^(unlink|rmdir|write_file|chmod)" }
+```
+
+### Trace Input to Sink
+
+```json
+// HTTP handler -> database query
+{
+  "from_symbol": "handle_request",
+  "to_symbol": "execute_query",
+  "max_hops": 8
+}
+
+// Form input -> file write
+{
+  "from_symbol": "parse_upload",
+  "to_symbol": "write_file",
+  "max_hops": 6
+}
+```
+
+### Find Validation Bypasses
+
+```json
+// Who calls the dangerous function directly?
+{ "symbol": "execute_query", "relation_type": "callers", "max_depth": 2 }
+
+// Who calls the sanitizer? (compare sets to find bypasses)
+{ "symbol": "sanitize_input", "relation_type": "callers", "max_depth": 2 }
+```
+
+### Cross-Language Trust Boundaries
+
+```json
+// All frontend-to-backend calls
+{ "from_lang": "TypeScript", "to_lang": "Python" }
+
+// Trace cross-language data flow
+{
+  "from_symbol": "submitForm",
+  "to_symbol": "db_execute",
+  "cross_language": true,
+  "max_hops": 10
+}
+```
+
+### Visualize Trust Boundary
+
+```json
+{
+  "symbols": ["validate_input", "sanitize", "execute_query"],
+  "include_callers": true,
+  "include_callees": true,
+  "max_depth": 2
+}
+```
+
 ## Path and Repository Filters
 
 ### Directory Scope

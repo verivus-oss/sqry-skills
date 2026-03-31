@@ -289,7 +289,53 @@ sqry query "kind:class OR kind:struct"
 sqry query "lang:rust AND (visibility:public OR kind:trait)"
 ```
 
-Note: MCP tools use filter parameters instead of boolean syntax.
+### MCP vs CLI Query Syntax
+
+MCP tools and the CLI accept different query formats. Understanding this divergence prevents common errors.
+
+**The `query` string in MCP tools accepts these predicates:**
+- `name:value` (exact or glob)
+- `name~=regex`
+- `kind:value`
+- `path:value` (or `file:value`)
+- `lang:value` (or `language:value`)
+- `parent:value`
+- `scope:value`, `scope.type:value`, `scope.name:value`, `scope.parent:value`, `scope.ancestor:value`
+- `text~=pattern`
+- `repo:value`
+- `callers:value`, `callees:value`, `imports:value`, `exports:value`, `returns:value`, `impl:value`, `references:value`
+- `duplicates:value`, `unused:value`, `circular:value`
+
+Multiple predicates in the query string are AND-combined. Boolean operators (`AND`, `OR`, parentheses) are **CLI-only** and will be ignored or cause errors in MCP queries.
+
+**The `filters` JSON object in MCP tools handles:**
+- `visibility`: `"public"`, `"private"` — **NOT available as a query predicate**
+- `language`: `["rust", "go"]` — array form, overlaps with `lang:` predicate
+- `symbol_kind`: `["function", "class"]` — array form, overlaps with `kind:` predicate
+- `score_min`: `0.7` — minimum relevance score
+
+**Common mistakes:**
+
+```json
+// WRONG: visibility is not a query predicate
+{ "query": "kind:function visibility:public" }
+
+// RIGHT: use the filters parameter
+{ "query": "kind:function", "filters": { "visibility": "public" } }
+
+// WRONG: boolean operators in MCP query
+{ "query": "kind:class OR kind:struct" }
+
+// RIGHT: run two queries, or use filters where available
+{ "query": "kind:class" }
+{ "query": "kind:struct" }
+
+// WRONG: combining kind:X name:Y as a single token
+{ "query": "kind:function name:exec" }  // This is CORRECT (space-separated predicates)
+{ "query": "kind:functionname:exec" }   // This is WRONG (no space)
+```
+
+**Rule of thumb**: Put structural predicates (`kind`, `name`, `path`, `lang`, relations) in the `query` string. Put filtering/ranking constraints (`visibility`, `score_min`, array-form `language`/`symbol_kind`) in `filters`.
 
 ## Quoting Rules
 

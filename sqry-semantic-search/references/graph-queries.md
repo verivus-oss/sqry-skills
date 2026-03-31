@@ -277,6 +277,32 @@ sqry graph complexity
 // Empty result = no callers = entry point
 ```
 
+### Security Audit: Input-to-Sink Tracing
+
+```json
+// 1. Find dangerous sinks (exec, eval, query execution)
+// Use semantic_search: name~=^(exec|eval|system|popen)$
+
+// 2. Trace from HTTP handler to database query
+{
+  "from_symbol": "handle_request",
+  "to_symbol": "execute_query",
+  "max_hops": 8,
+  "cross_language": true
+}
+
+// 3. Visualize trust boundary around validation + sink
+{
+  "symbols": ["validate_input", "sanitize", "execute_query"],
+  "include_callers": true,
+  "include_callees": true,
+  "max_depth": 2
+}
+
+// 4. Find who calls dangerous function (compare with sanitizer callers to find bypasses)
+{ "symbol": "execute_query", "relation_type": "callers", "max_depth": 3 }
+```
+
 ### Cross-Language Analysis
 
 ```json

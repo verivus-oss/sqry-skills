@@ -265,6 +265,83 @@ kind:method scope.ancestor:Api        # methods under any Api ancestor
 - Call path between A and B -> `trace_path`
 - Cross-language edges -> `cross_language_edges`
 
+## Handling Ambiguous Symbols
+
+Many codebases reuse names like `new`, `init`, `handle`, `process`, or `run` across multiple files and types. When a symbol name is ambiguous, `direct_callers`, `direct_callees`, and `call_hierarchy` may fail or return results for the wrong symbol.
+
+### Disambiguation Strategies
+
+**1. Use `file_path` to scope the query:**
+
+```json
+// call_hierarchy supports file_path to disambiguate
+{
+  "symbol": "handle",
+  "file_path": "src/api/router.rs"
+}
+```
+
+**2. Use qualified names when the tool supports them:**
+
+```json
+// relation_query accepts qualified identifiers
+{
+  "symbol": "UserService::authenticate",
+  "relation_type": "callers"
+}
+```
+
+**3. Fall back to `get_references` with directory scoping:**
+
+When relation tools fail on ambiguous names, `get_references` with a `path` filter often succeeds:
+
+```json
+{
+  "symbol": "handle",
+  "path": "src/api"
+}
+```
+
+**4. Use `semantic_search` to find the exact symbol first:**
+
+```
+kind:function name:handle path:src/api/router.rs
+```
+
+Then use the fully qualified name or file path from the result in subsequent relation queries.
+
+### When to Expect Ambiguity
+
+- Common names: `new`, `init`, `run`, `handle`, `process`, `execute`, `get`, `set`
+- Method names shared across types: `validate`, `serialize`, `to_string`
+- Test helpers: `setup`, `teardown`, `mock_*`
+- Overloaded/polymorphic methods in OOP codebases
+
+**Rule of thumb**: If the name could plausibly exist in more than one file, always provide `file_path` or use a qualified name.
+
+## Output Size Management
+
+Some tools can return very large results. Scope queries to avoid overwhelming context windows.
+
+### Tools That Can Produce Large Output
+
+| Tool | Risk Scenario | Mitigation |
+|------|--------------|------------|
+| `get_document_symbols` | Large files (1000+ lines) | Use `semantic_search` with `path:` filter instead |
+| `find_duplicates` | Low similarity thresholds or large codebases | Use `filters` to limit by language or path |
+| `explain_code` | Complex functions with many relationships | Prefer `get_hover_info` for quick signature, use `explain_code` only when full context is needed |
+| `find_unused` | Large monorepos | Scope with path filter: `unused:all` + `path:src/module` |
+| `list_symbols` | Any non-trivial project | Always use with `path` or `filters` parameters |
+| `call_hierarchy` | Highly-connected symbols (e.g., logging utilities) | Set `max_depth: 1` first, increase only if needed |
+| `subgraph` | Hub symbols with many connections | Set `max_nodes` conservatively (20-50), use `max_depth: 1` initially |
+
+### General Scoping Strategy
+
+1. **Start narrow**: Add `path`, `max_results`, or `max_depth` constraints
+2. **Expand if needed**: Remove constraints only when results are too few
+3. **Prefer targeted tools**: Use `direct_callers` (depth=1) before `call_hierarchy` (full tree)
+4. **Filter by kind**: Add `kind:function` or similar to reduce noise
+
 ## Recommended Workflow: Understand Before Changing
 
 Follow **broad -> narrow -> impact** before modifying code.
@@ -292,6 +369,107 @@ Follow **broad -> narrow -> impact** before modifying code.
 ### 5. Check quality concerns
 - `find_cycles` -> circular dependencies near the change
 - `find_unused` -> dead code near the change area
+
+## Recommended Workflow: Security Audit
+
+Use sqry's graph tools to trace trust boundaries and find dangerous patterns. This workflow traces **untrusted input to dangerous sinks** — exactly the analysis where AST-based graph traversal outperforms text search.
+
+### 1. Find dangerous sinks
+
+Identify functions that execute code, run queries, or access the filesystem:
+
+```json
+// Find exec/eval/spawn calls
+{ "query": "name~=^(exec|eval|spawn|system|popen|subprocess)$" }
+{ "query": "name~=^(execute|raw_query|run_command)" }
+
+// Find SQL query construction
+{ "query": "name~=.*(query|execute|prepare).*", "filters": { "symbol_kind": ["function", "method"] } }
+
+// Find file system operations
+{ "query": "name~=^(unlink|rmdir|write_file|read_file|open)" }
+```
+
+### 2. Find input entry points
+
+Identify where untrusted data enters the system:
+
+```json
+// HTTP handlers and route definitions
+{ "query": "name~=.*(handler|endpoint|route|controller).*" }
+{ "query": "kind:function path:src/api" }
+
+// Request parsing
+{ "query": "name~=.*(parse|deserialize|from_request|from_body).*" }
+```
+
+### 3. Trace paths from input to sink
+
+Use `trace_path` to find call chains from entry points to dangerous operations:
+
+```json
+{
+  "from_symbol": "handle_user_input",
+  "to_symbol": "execute_query",
+  "max_hops": 8,
+  "cross_language": true
+}
+```
+
+### 4. Analyze trust boundaries
+
+Use `subgraph` to visualize the boundary between validated and unvalidated data:
+
+```json
+{
+  "symbols": ["validate_input", "sanitize", "execute_query"],
+  "include_callers": true,
+  "include_callees": true,
+  "max_depth": 2
+}
+```
+
+### 5. Check for bypasses
+
+Find callers of dangerous sinks that skip validation:
+
+```json
+// Who calls execute_query?
+{ "symbol": "execute_query", "relation_type": "callers", "max_depth": 3 }
+
+// Compare against who calls sanitize — callers of the sink that
+// DON'T appear in callers of the sanitizer are potential bypasses
+{ "symbol": "sanitize", "relation_type": "callers", "max_depth": 3 }
+```
+
+### 6. Cross-language trust boundaries
+
+In polyglot codebases, trust boundaries often cross language lines:
+
+```json
+// Find all cross-language edges (e.g., JS frontend -> Python backend)
+{ "from_lang": "TypeScript", "to_lang": "Python" }
+
+// Trace a specific cross-language path
+{
+  "from_symbol": "submitForm",
+  "to_symbol": "db_execute",
+  "cross_language": true,
+  "max_hops": 10
+}
+```
+
+### Security Audit Cheat Sheet
+
+| Goal | Tool | Query |
+|------|------|-------|
+| Find all exec/eval | `semantic_search` | `name~=^(exec\|eval\|system\|popen)$` |
+| Find SQL construction | `semantic_search` | `name~=.*(query\|execute).*` + `path:src/db` |
+| Trace input to sink | `trace_path` | `from_symbol` → `to_symbol` |
+| Visualize trust boundary | `subgraph` | Seed with validator + sink symbols |
+| Find sink callers | `direct_callers` | `symbol: "dangerous_function"` |
+| Cross-language flows | `cross_language_edges` | Filter by `from_lang` / `to_lang` |
+| Impact of removing validation | `dependency_impact` | `symbol: "validate_input"` |
 
 ## Filter Parameters
 
