@@ -1,6 +1,6 @@
 ---
 name: sqry-semantic-search
-version: 4.8.16
+version: 6.0.0
 description: |
   AST-based semantic code search skill for AI agents. Teaches agents to use sqry's 33 MCP tools for finding symbols by structure (functions, classes, types), tracing relationships (callers, callees, imports, inheritance), analyzing dependencies, and detecting code quality issues. Unlike embedding-based search, sqry parses code like a compiler. Supports 35 languages.
 ---

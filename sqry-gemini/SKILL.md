@@ -1,6 +1,6 @@
 ---
 name: sqry-gemini
-version: 4.8.16
+version: 6.0.0
 description: |
   Setup and workflow for using sqry semantic code search as an MCP server with Gemini CLI. Covers installation, MCP configuration via settings.json, context file behavior, and recommended patterns. Install this skill to give Gemini CLI access to sqry's 33 AST-based code analysis tools.
 ---

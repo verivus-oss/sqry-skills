@@ -1,6 +1,6 @@
 ---
 name: sqry-claude
-version: 4.8.16
+version: 6.0.0
 description: |
   Setup and workflow for using sqry semantic code search as an MCP server with Claude Code. Covers installation, MCP configuration, tool naming conventions, and recommended search patterns. Install this skill to give Claude Code full access to sqry's 33 AST-based code analysis tools.
 ---

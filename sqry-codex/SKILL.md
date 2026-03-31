@@ -1,6 +1,6 @@
 ---
 name: sqry-codex
-version: 4.8.16
+version: 6.0.0
 description: |
   Setup and workflow for using sqry semantic code search as an MCP server with OpenAI Codex CLI. Covers installation, MCP configuration via `~/.codex/config.toml`, and recommended patterns for code analysis tasks. Install this skill to give Codex access to sqry's 33 AST-based code analysis tools.
 ---
