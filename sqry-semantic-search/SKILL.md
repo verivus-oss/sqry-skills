@@ -47,6 +47,7 @@ This is the primary way to find the right tool. For full parameter details, see 
 - See all references -> `get_references`
 - See who calls it -> `direct_callers` (depth=1) or `relation_query` (multi-depth)
 - See what it calls -> `direct_callees` (depth=1) or `relation_query` (multi-depth)
+- See who imports/exports/returns it -> `relation_query` with `relation_type`: imports, exports, returns
 - See call tree -> `call_hierarchy`
 - See its context + source -> `explain_code`
 - See what breaks if I change it -> `dependency_impact`
@@ -75,6 +76,13 @@ This is the primary way to find the right tool. For full parameter details, see 
 - Graph as DOT/Mermaid/D2 -> `export_graph`
 - Call path between A and B -> `trace_path`
 - Cross-language edges -> `cross_language_edges`
+
+**I want to inspect the index...**
+- Check index health -> `get_index_status`
+- List indexed files -> `list_files`
+- List indexed symbols -> `list_symbols`
+- See all symbols in a file -> `get_document_symbols`
+- Rebuild from scratch -> `rebuild_index`
 
 **I need natural language help...**
 - Translate English to sqry query -> `sqry_ask`
@@ -140,7 +148,7 @@ For per-tool risk scenarios and mitigations, see [references/tool-reference.md](
 
 **Symbol extraction + imports (9)**: JSON, Oracle PL/SQL, Pulumi, Puppet, Salesforce Apex, SAP ABAP, ServiceNow Xanadu, ServiceNow XML, Terraform
 
-Note: JSON and ServiceNow XML are `HighWallClock` plugins, excluded from the default index. Rebuild with `--include-high-cost` or `--enable-plugin json` to include them.
+Note: JSON and ServiceNow XML are `HighWallClock` plugins, excluded from the default index. Include them with `--include-high-cost`, `SQRY_INCLUDE_HIGH_COST=1`, or per-plugin: `--enable-plugin json`, `--enable-plugin servicenow-xml`.
 
 ## When NOT to Use sqry
 

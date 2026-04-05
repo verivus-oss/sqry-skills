@@ -73,7 +73,7 @@ This should invoke `mcp__sqry__get_graph_stats` and return node/edge counts.
 
 This skill covers Claude Code setup and integration patterns. **Also load the `sqry-semantic-search` skill** for tool selection guidance, query syntax, and disambiguation strategies.
 
-sqry-semantic-search uses tiered discovery to save tokens: it loads a compact Quick Tool Selection guide first. If you need full parameter details, load its `references/tool-reference.md`. For advanced workflows (security audit, pre-change analysis), load `references/workflows.md`. Only load what you need.
+sqry-semantic-search uses tiered discovery to save tokens: it loads a compact Quick Tool Selection guide first. If you need full parameter details, load `sqry-semantic-search/references/tool-reference.md`. For advanced workflows (security audit, pre-change analysis), load `sqry-semantic-search/references/workflows.md`. Only load what you need.
 
 ## Quick Tool Selection
 

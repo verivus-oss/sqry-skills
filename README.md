@@ -28,8 +28,8 @@ npx skills add https://github.com/verivus-oss/sqry-skills --skill sqry-gemini
 
 sqry is a semantic code search tool that parses code like a compiler to understand structure and relationships. Unlike embedding-based search that treats code as text, sqry builds an AST-powered graph of your codebase.
 
-- **35 languages** supported (Rust, TypeScript, Python, Go, Java, C/C++, C#, and more)
-- **33 MCP tools** for AI agent integration
+- **37 languages** supported (Rust, TypeScript, Python, Go, Java, C/C++, C#, and more)
+- **34 MCP tools** for AI agent integration
 - **Graph analysis**: callers, callees, call paths, dependency impact, cycles, duplicates, dead code
 - **Query language**: `kind:function name:*auth*`, `callers:authenticate`, `impl:Serialize`
 
