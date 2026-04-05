@@ -1,13 +1,13 @@
 ---
 name: sqry-gemini
-version: 6.0.0
+version: 7.1.3
 description: |
-  Setup and workflow for using sqry semantic code search as an MCP server with Gemini CLI. Covers installation, MCP configuration via settings.json, context file behavior, and recommended patterns. Install this skill to give Gemini CLI access to sqry's 33 AST-based code analysis tools.
+  Setup and workflow for using sqry semantic code search as an MCP server with Gemini CLI. Covers installation, MCP configuration via settings.json, context file behavior, and recommended patterns. Install this skill to give Gemini CLI access to sqry's 34 AST-based code analysis tools.
 ---
 
 # sqry for Gemini CLI
 
-This skill configures the Gemini CLI agent to use sqry's MCP server for AST-based semantic code search across 35 languages.
+This skill configures the Gemini CLI agent to use sqry's MCP server for AST-based semantic code search across 37 languages.
 
 ## Setup
 
@@ -176,9 +176,44 @@ Use grep/rg for literal text search. Use sqry for everything structural.
 - sqry MCP tools provide deeper structural understanding than what context files alone offer.
 - Use `mcp__sqry__hierarchical_search` to get RAG-optimized results that include file and container grouping — this pairs well with Gemini's context window management.
 
+## Recent Features (since v6.0)
+
+### Plugin cost tiering
+- Plugins classified as `Fast` (default) or `HighWallClock`
+- High-cost plugins (JSON, ServiceNow XML) excluded from default index
+- CLI: `--include-high-cost` / `--exclude-high-cost`, `--enable-plugin ID` / `--disable-plugin ID`
+- Env: `SQRY_INCLUDE_HIGH_COST=1`
+
+### Time-expensive MCP operations
+- `rebuild_index`: 10min timeout, full graph rebuild -- only when index stale
+- `semantic_diff`: creates git worktrees + indexes -- scope with file/kind filters
+- `find_cycles`, `complexity_metrics`: can timeout on large graphs -- scope to files
+- `find_duplicates`: quadratic scaling -- filter by file/language/kind
+- `call_hierarchy` depth>2, `dependency_impact` depth>3: exponential growth
+
+### Macro boundary analysis (Rust)
+- CLI: `sqry cache expand`, `--enable-macro-expansion`, `--cfg`, `--cfg-filter`, `--include-generated`, `--macro-boundaries`
+- MCP: `mcp__sqry__expand_cache_status` tool, macro metadata in search/definition results
+
+### JVM classpath analysis
+- CLI: `--classpath`, `--classpath-depth`, `--classpath-file`
+- MCP: `include_classpath` parameter on search tools, `provenance` field in results
+
+### Security defaults
+- MCP redaction preset now `"minimal"` by default (was `"none"`)
+- Override: `SQRY_REDACTION_PRESET=none`
+- Index timeout: 600s, query timeout: 60s
+
+### Other
+- 37 language plugins (added JSON, ServiceNow XML)
+- Snapshot format V7 -- rebuild index on major version upgrade
+- Multi-root VS Code workspace support
+
 ## Troubleshooting
 
 - **No tools visible**: Restart Gemini CLI after running `sqry mcp setup --tool gemini`
 - **Empty results**: Run `sqry index .` to build the index
 - **Stale results**: Run `sqry index --force .` to force rebuild
+- **Snapshot version mismatch**: Run `rm -rf .sqry/graph && sqry index .` after major upgrades
+- **Missing JSON/ServiceNow symbols**: Rebuild with `sqry index --include-high-cost`
 - **Check health**: Call `mcp__sqry__get_index_status`

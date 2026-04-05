@@ -353,6 +353,16 @@ sqry's unified graph tracks 20+ edge types:
 - `WebAssemblyCall` - WASM calls
 - `DbQuery` - Database queries
 
+**Rust-specific:**
+- `LifetimeConstraint` - Lifetime bounds
+- `TraitMethodBinding` - Trait method resolution
+- `MacroExpansion` - Macro expansion relationships (with CfgGate variant)
+
+**Database:**
+- `TableRead` - SQL table reads
+- `TableWrite` - SQL table writes
+- `TriggeredBy` - Database trigger relationships
+
 **Extended:**
 - `MessageQueue` - Message queue interactions
 - `WebSocket` - WebSocket communications
@@ -360,6 +370,24 @@ sqry's unified graph tracks 20+ edge types:
 - `ProcessExec` - Process execution
 - `FileIpc` - File-based IPC
 - `ProtocolCall` - Protocol-based calls
+
+**JVM Classpath:**
+- `GenericBound`, `AnnotatedWith`, `AnnotationParam`, `LambdaCaptures`
+- `ModuleExports`, `ModuleRequires`, `ModuleOpens`, `ModuleProvides`
+- `TypeArgument`, `ExtensionReceiver`, `CompanionOf`, `SealedPermit`
+
+## Time-Cost Warnings
+
+Several graph operations can be expensive on large codebases:
+
+| Operation | Risk | Mitigation |
+|-----------|------|------------|
+| `trace_path` | Combinatorial paths | Keep max_hops <= 5 |
+| `find_cycles` | Timeout on large graphs | Scope to files, limit max_results |
+| `semantic_diff` | Creates worktrees + indexes | Use file/kind filters |
+| `complexity_metrics` | Can hang | Always scope to file_path |
+| `subgraph` max_nodes>100 | Large output | Keep max_nodes <= 50 |
+| `dependency_impact` max_depth>3 | Exponential | Keep max_depth <= 3 |
 
 ## Limitations
 
