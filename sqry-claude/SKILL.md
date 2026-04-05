@@ -1,6 +1,6 @@
 ---
 name: sqry-claude
-version: 7.1.3
+version: 7.1.4
 description: |
   Setup and workflow for using sqry semantic code search as an MCP server with Claude Code. Covers installation, MCP configuration, tool naming conventions, and recommended search patterns. Install this skill to give Claude Code full access to sqry's 34 AST-based code analysis tools.
 ---
@@ -71,9 +71,9 @@ This should invoke `mcp__sqry__get_graph_stats` and return node/edge counts.
 
 ## Skill Dependency
 
-This skill covers Claude Code setup and integration patterns. For comprehensive tool selection guidance, query syntax, disambiguation strategies, output size management, and security audit workflows, **also load the `sqry-semantic-search` skill**. That skill is the primary reference for how to use sqry effectively.
+This skill covers Claude Code setup and integration patterns. **Also load the `sqry-semantic-search` skill** for tool selection guidance, query syntax, and disambiguation strategies.
 
-If you find yourself unsure which tool to use, or getting empty/wrong results, consult sqry-semantic-search before retrying.
+sqry-semantic-search uses tiered discovery to save tokens: it loads a compact Quick Tool Selection guide first. If you need full parameter details, load its `references/tool-reference.md`. For advanced workflows (security audit, pre-change analysis), load `references/workflows.md`. Only load what you need.
 
 ## Quick Tool Selection
 

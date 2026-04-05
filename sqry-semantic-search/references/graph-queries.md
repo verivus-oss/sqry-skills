@@ -395,4 +395,4 @@ Several graph operations can be expensive on large codebases:
 2. **Indirect calls**: Function pointers/callbacks may not be traced
 3. **External calls**: Calls to external libraries shown as leaf nodes
 4. **Reflection**: Runtime-determined calls not captured
-5. **Macros**: Some macro-generated code may have incomplete edges
+5. **Macros**: Rust macro boundaries are tracked via `expand_cache_status` and macro boundary metadata in responses; some macro-generated code in other languages may still have incomplete edges
