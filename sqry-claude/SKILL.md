@@ -1,51 +1,29 @@
 ---
 name: sqry-claude
-version: 7.1.4
+version: 8.0.0
 description: |
-  Setup and workflow for using sqry semantic code search as an MCP server with Claude Code. Covers installation, MCP configuration, tool naming conventions, and recommended search patterns. Install this skill to give Claude Code full access to sqry's 34 AST-based code analysis tools.
+  Setup and workflow for using sqry semantic code search as an MCP server with Claude Code. Covers installation, MCP configuration, tool naming conventions, and troubleshooting. Tool reference and query syntax are served live by the sqry-mcp binary.
 ---
 
 # sqry for Claude Code
 
-This skill configures Claude Code to use sqry's MCP server for AST-based semantic code search across 37 languages.
+This skill configures Claude Code to use sqry's MCP server for AST-based semantic code search.
 
 ## Setup
 
-### 1. Install sqry
+Requires **sqry >= 4.0**.
 
 ```bash
-# Recommended: signed release installer
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
-
-# Fallback: build from source
-cargo install sqry-cli
-cargo install sqry-mcp
-
-# Alternative package manager
-brew install verivus-oss/sqry/sqry
-```
-
-### 2. Index your project
-
-```bash
 cd /path/to/your/project
 sqry index .
-```
-
-### 3. Configure MCP server
-
-Recommended:
-
-```bash
 sqry mcp setup --tool claude
 sqry mcp status
 ```
 
-This writes a Claude Code entry in `.claude.json` or `~/.claude.json`
-pointing to `sqry-mcp`. Claude defaults to per-project configuration with
-`SQRY_MCP_WORKSPACE_ROOT` pinned to the current repository.
+This writes a Claude Code entry in `.claude.json` or `~/.claude.json` pointing to `sqry-mcp`.
 
-Manual config example:
+Manual config:
 
 ```json
 {
@@ -53,175 +31,41 @@ Manual config example:
     "sqry": {
       "type": "stdio",
       "command": "/absolute/path/to/sqry-mcp",
-      "env": {
-        "SQRY_MCP_WORKSPACE_ROOT": "/path/to/your/project"
-      }
+      "env": { "SQRY_MCP_WORKSPACE_ROOT": "/path/to/your/project" }
     }
   }
 }
 ```
 
-### 4. Verify
-
-After restarting Claude Code, tools should appear with the `mcp__sqry__` prefix. Test with:
-
-> "Use sqry to show graph stats for this project"
-
-This should invoke `mcp__sqry__get_graph_stats` and return node/edge counts.
+Verify: after restarting Claude Code, ask "Use sqry to show graph stats for this project" — this should invoke `mcp__sqry__get_graph_stats`.
 
 ## Skill Dependency
 
-This skill covers Claude Code setup and integration patterns. **Also load the `sqry-semantic-search` skill** for tool selection guidance, query syntax, and disambiguation strategies.
+**Also load the `sqry-semantic-search` skill** for disambiguation tips, output size guidance, and the MCP resource routing table.
 
-sqry-semantic-search uses tiered discovery to save tokens: it loads a compact Quick Tool Selection guide first. If you need full parameter details, load `sqry-semantic-search/references/tool-reference.md`. For advanced workflows (security audit, pre-change analysis), load `sqry-semantic-search/references/workflows.md`. Only load what you need.
+## Tool Naming
 
-## Quick Tool Selection
+All sqry MCP tools use the `mcp__sqry__` prefix in Claude Code.
 
-**I know the symbol name and want to...**
-- See its definition → `mcp__sqry__get_definition`
-- See who calls it → `mcp__sqry__direct_callers` (depth=1) or `mcp__sqry__relation_query` (multi-depth)
-- See what it calls → `mcp__sqry__direct_callees`
-- See what breaks if I change it → `mcp__sqry__dependency_impact`
-- Understand it with context → `mcp__sqry__explain_code`
+## Reading MCP Resources
 
-**I want to search for symbols...**
-- By name substring → `mcp__sqry__pattern_search`
-- By kind/visibility/language → `mcp__sqry__semantic_search`
-- With RAG-optimized grouping → `mcp__sqry__hierarchical_search`
-
-**I want to analyze the codebase...**
-- Circular dependencies → `mcp__sqry__find_cycles`
-- Dead code → `mcp__sqry__find_unused`
-- Change impact → `mcp__sqry__dependency_impact`
-- Trace call path A→B → `mcp__sqry__trace_path`
-
-## Handling Ambiguous Symbols
-
-When using `mcp__sqry__direct_callers`, `mcp__sqry__direct_callees`, or `mcp__sqry__call_hierarchy` with common names (`handle`, `new`, `init`, `process`, `run`), the tool may fail or return wrong results.
-
-**Always disambiguate** by providing `file_path`:
-
-```json
-{
-  "symbol": "handle",
-  "file_path": "src/api/router.rs"
-}
-```
-
-Or use a qualified name: `"symbol": "UserService::authenticate"`
-
-If relation tools fail, fall back to `mcp__sqry__get_references` with a `path` filter to scope results.
-
-## Tool Naming in Claude Code
-
-All sqry MCP tools use the `mcp__sqry__` prefix in Claude Code:
-
-```
-mcp__sqry__semantic_search
-mcp__sqry__relation_query
-mcp__sqry__dependency_impact
-mcp__sqry__explain_code
-mcp__sqry__trace_path
-mcp__sqry__find_cycles
-...
-```
+Claude Code reads sqry resources via `ReadMcpResourceTool`. The routing table in sqry-semantic-search tells you which resource to read for each task.
 
 ## Recommended CLAUDE.md Addition
-
-Add this to your project's `CLAUDE.md` to guide Claude on when to use sqry:
 
 ```markdown
 ## Code Search
 
-Use sqry MCP tools (`mcp__sqry__*`) as the default for semantic code search:
-- `mcp__sqry__semantic_search` - Find symbols by meaning
-- `mcp__sqry__hierarchical_search` - RAG-optimized search with grouping
-- `mcp__sqry__relation_query` - Find callers, callees, imports
-- `mcp__sqry__explain_code` - Understand a symbol with context
-
-Use Grep for literal text search. Use Glob for file finding. Use sqry for everything structural.
+Use sqry MCP tools (`mcp__sqry__*`) for semantic code search.
+Read `sqry://docs/capability-map` to find the right tool.
+Use Grep for literal text search. Use Glob for file finding.
 ```
-
-## Workflow
-
-1. **Search first**: Use `mcp__sqry__semantic_search` or `mcp__sqry__hierarchical_search` before reading files manually.
-2. **Understand before changing**: Call `mcp__sqry__dependency_impact` before modifying shared code.
-3. **Trace relationships**: Use `mcp__sqry__direct_callers` and `mcp__sqry__direct_callees` to understand call chains.
-4. **Verify after changes**: Use `mcp__sqry__semantic_diff` to compare before/after at the symbol level.
-
-## Common Claude Code Patterns
-
-### Find a function and its callers
-
-```
-User: "Who calls the authenticate function?"
-
-Claude uses: mcp__sqry__relation_query
-  symbol: "authenticate"
-  relation_type: "callers"
-  max_depth: 2
-```
-
-### Understand impact before refactoring
-
-```
-User: "What would break if I change UserService?"
-
-Claude uses: mcp__sqry__dependency_impact
-  symbol: "UserService"
-  max_depth: 3
-  include_indirect: true
-```
-
-### Explore unfamiliar code
-
-```
-User: "Help me understand the auth module"
-
-Claude uses:
-1. mcp__sqry__semantic_search  query: "path:src/auth"
-2. mcp__sqry__explain_code     file_path: "src/auth/mod.rs", symbol_name: "authenticate"
-3. mcp__sqry__subgraph         symbols: ["authenticate", "verify_token"]
-```
-
-## Recent Features (since v6.0)
-
-### Plugin cost tiering
-- Plugins classified as `Fast` (default) or `HighWallClock`
-- High-cost plugins (JSON, ServiceNow XML) excluded from default index
-- CLI: `--include-high-cost` / `--exclude-high-cost`, `--enable-plugin ID` / `--disable-plugin ID`
-- Env: `SQRY_INCLUDE_HIGH_COST=1`
-
-### Time-expensive MCP operations
-- `rebuild_index`: 10min timeout, full graph rebuild -- only when index stale
-- `semantic_diff`: creates git worktrees + indexes -- scope with file/kind filters
-- `find_cycles`, `complexity_metrics`: can timeout on large graphs -- scope to files
-- `find_duplicates`: quadratic scaling -- filter by file/language/kind
-- `call_hierarchy` depth>2, `dependency_impact` depth>3: exponential growth
-
-### Macro boundary analysis (Rust)
-- CLI: `sqry cache expand`, `--enable-macro-expansion`, `--cfg`, `--cfg-filter`, `--include-generated`, `--macro-boundaries`
-- MCP: `mcp__sqry__expand_cache_status` tool, macro metadata in search/definition results
-
-### JVM classpath analysis
-- CLI: `--classpath`, `--classpath-depth`, `--classpath-file`
-- MCP: `include_classpath` parameter on search tools, `provenance` field in results
-
-### Security defaults
-- MCP redaction preset now `"minimal"` by default (was `"none"`)
-- Override: `SQRY_REDACTION_PRESET=none`
-- Index timeout: 600s, query timeout: 60s
-
-### Other
-- 37 language plugins (added JSON, ServiceNow XML)
-- Snapshot format V7 -- rebuild index on major version upgrade
-- Multi-root VS Code workspace support
 
 ## Troubleshooting
 
-- **No tools visible**: Restart Claude Code after running `sqry mcp setup --tool claude`
-- **Empty results**: Run `sqry index .` to build/rebuild the index
+- **No tools visible**: Restart Claude Code after `sqry mcp setup --tool claude`
+- **Empty results**: Run `sqry index .` to build the index
 - **Stale results**: Run `sqry index --force .` to force rebuild
-- **Snapshot version mismatch**: Run `rm -rf .sqry/graph && sqry index .` after major upgrades
-- **Missing JSON/ServiceNow symbols**: Rebuild with `sqry index --include-high-cost`
-- **Check health**: Ask Claude to call `mcp__sqry__get_index_status`
+- **Snapshot mismatch**: Run `rm -rf .sqry/graph && sqry index .` after major upgrades
+- **Transport error on resource read**: MCP server not running — check `sqry mcp status`
+- **404 on `sqry://meta/manifest`**: Old server version — resources still available via `sqry://docs/tool-guide`
