@@ -1,6 +1,6 @@
 ---
 name: sqry-claude
-version: 8.0.0
+version: 10.0.1
 description: |
   Setup and workflow for using sqry semantic code search as an MCP server with Claude Code. Covers installation, MCP configuration, tool naming conventions, and troubleshooting. Tool reference and query syntax are served live by the sqry-mcp binary.
 ---
@@ -11,7 +11,8 @@ This skill configures Claude Code to use sqry's MCP server for AST-based semanti
 
 ## Setup
 
-Requires **sqry >= 4.0**.
+Requires **sqry >= 4.0** for MCP resources. Use **sqry >= 10.0.1** for
+workspace-aware status and daemon-backed MCP workflows.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
@@ -22,6 +23,14 @@ sqry mcp status
 ```
 
 This writes a Claude Code entry in `.claude.json` or `~/.claude.json` pointing to `sqry-mcp`.
+
+For long-running sessions or large repositories, run MCP through the daemon:
+
+```bash
+sqry daemon start
+sqry daemon load .
+sqry-mcp --daemon
+```
 
 Manual config:
 
@@ -36,6 +45,10 @@ Manual config:
   }
 }
 ```
+
+To use daemon-backed MCP manually, add `"args": ["--daemon"]` to the server
+entry. If the daemon is not already running, `sqry-mcp --daemon` auto-starts it
+unless `SQRY_DAEMON_NO_AUTO_START=1` is set.
 
 Verify: after restarting Claude Code, ask "Use sqry to show graph stats for this project" — this should invoke `mcp__sqry__get_graph_stats`.
 

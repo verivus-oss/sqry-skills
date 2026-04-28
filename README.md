@@ -51,6 +51,20 @@ When sqry adds new tools or languages, you get them automatically by upgrading t
 
 sqry is a semantic code search tool that parses code like a compiler to understand structure and relationships. Unlike embedding-based search that treats code as text, sqry builds an AST-powered graph of your codebase.
 
+## sqry 10.x Notes
+
+Current sqry releases add workspace-aware indexing and daemon-backed operation:
+
+- Use `.sqry-workspace` or a VS Code `.code-workspace` `sqry.workspace` block
+  to describe multi-repository source roots.
+- Use `sqry workspace status <workspace> --json --no-cache` to inspect the
+  same aggregate source-root status used by LSP and VS Code.
+- For repeated assistant calls, keep the graph warm with `sqry daemon start`,
+  `sqry daemon load <path>`, and launch MCP with `sqry-mcp --daemon`.
+- MCP tools now use session-scoped workspace resolution: explicit `path`
+  arguments win, then file-bearing arguments, MCP roots, last-resolved
+  workspace, and legacy environment/CWD fallback.
+
 Install for MCP usage:
 
 ```bash

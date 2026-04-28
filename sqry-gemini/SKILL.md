@@ -1,6 +1,6 @@
 ---
 name: sqry-gemini
-version: 8.0.0
+version: 10.0.1
 description: |
   Setup and workflow for using sqry semantic code search as an MCP server with Gemini CLI. Covers installation, MCP configuration, and troubleshooting. Tool reference and query syntax are served live by the sqry-mcp binary.
 ---
@@ -11,7 +11,8 @@ This skill configures the Gemini CLI agent to use sqry's MCP server for AST-base
 
 ## Setup
 
-Requires **sqry >= 4.0**.
+Requires **sqry >= 4.0** for MCP resources. Use **sqry >= 10.0.1** for
+workspace-aware status and daemon-backed MCP workflows.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
@@ -35,7 +36,21 @@ This writes a global entry to `~/.gemini/settings.json`:
 }
 ```
 
-Gemini uses CWD-based workspace discovery. Start Gemini from the project directory.
+Gemini uses sqry-mcp's session-scoped workspace resolution: explicit `path`
+arguments first, then file-bearing arguments, MCP roots, last-resolved
+workspace, and finally legacy environment/CWD fallback. Start Gemini from the
+project directory for the simplest single-repo flow.
+
+For long-running sessions or large repositories, run MCP through the daemon:
+
+```bash
+sqry daemon start
+sqry daemon load .
+sqry-mcp --daemon
+```
+
+To use daemon-backed MCP from Gemini config, set `"args": ["--daemon"]` under
+the `sqry` MCP server entry.
 
 ## Skill Dependency
 

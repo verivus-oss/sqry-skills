@@ -1,6 +1,6 @@
 ---
 name: sqry-semantic-search
-version: 8.0.0
+version: 10.0.1
 description: |
   AST-based semantic code search skill for AI agents. Teaches agents to use sqry's MCP tools for finding symbols by structure, tracing relationships, analyzing dependencies, and detecting code quality issues. Unlike embedding-based search, sqry parses code like a compiler. Tool reference and query syntax are served live by the sqry-mcp binary — always current with your installed version.
 ---
@@ -19,13 +19,23 @@ Use this skill when users ask to:
 
 ## Setup
 
-Requires **sqry >= 4.0**. If you are on an older version, upgrade:
+Requires **sqry >= 4.0** for MCP resources. Use **sqry >= 10.0.1** for the
+current workspace-aware status and daemon-backed workflows described here.
+If you are on an older version, upgrade:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
 sqry index .
 sqry mcp setup --tool claude   # or codex, gemini
 sqry mcp status
+```
+
+For repeated agent sessions, prefer daemon-backed MCP:
+
+```bash
+sqry daemon start
+sqry daemon load .
+sqry-mcp --daemon
 ```
 
 ## Live Documentation (from sqry MCP server)
@@ -47,6 +57,21 @@ Tool reference, query syntax, and workflow recipes are served by the sqry-mcp bi
 | Follow a workflow recipe | `sqry://docs/patterns` |
 | Understand the graph internals | `sqry://docs/architecture` |
 | Check installed version and counts | `sqry://meta/manifest` |
+
+## Workspace-Aware Usage
+
+sqry 10.x can resolve a logical workspace from a `.sqry-workspace` registry or
+a VS Code `.code-workspace` file containing `sqry.workspace`.
+
+When working in a multi-root session:
+
+1. Prefer explicit `path` or file-bearing arguments when the target source root
+   is ambiguous.
+2. Use `sqry workspace status <workspace> --json --no-cache` outside MCP to
+   inspect source-root health.
+3. For MCP calls, rely on session-scoped resolution in this order: explicit
+   `path`, file-bearing arguments, MCP roots, last-resolved workspace, then
+   legacy environment/CWD fallback.
 
 ## Handling Ambiguous Symbols
 
