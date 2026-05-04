@@ -1,8 +1,8 @@
 ---
 name: sqry-semantic-search
-version: 10.0.1
+version: 12.1.6
 description: |
-  AST-based semantic code search skill for AI agents. Teaches agents to use sqry's MCP tools for finding symbols by structure, tracing relationships, analyzing dependencies, and detecting code quality issues. Unlike embedding-based search, sqry parses code like a compiler. Tool reference and query syntax are served live by the sqry-mcp binary — always current with your installed version.
+  AST-based semantic code search skill for AI agents. Teaches agents to use sqry's 36-tool MCP catalogue for finding symbols by structure, tracing relationships, analyzing dependencies, and detecting code quality issues. Unlike embedding-based search, sqry parses code like a compiler. Tool reference and query syntax are served live by the sqry-mcp binary — always current with your installed version.
 ---
 
 # sqry Semantic Code Search Skill
@@ -19,9 +19,10 @@ Use this skill when users ask to:
 
 ## Setup
 
-Requires **sqry >= 4.0** for MCP resources. Use **sqry >= 10.0.1** for the
-current workspace-aware status and daemon-backed workflows described here.
-If you are on an older version, upgrade:
+Requires **sqry >= 4.0** for MCP resources. Use **sqry >= 12.1.6** for the
+current 36-tool MCP catalogue, the LSP `executeCommand` capability + caller
+code lenses + unused/cycle/duplicate diagnostics, and daemon-backed workspace
+status. If you are on an older version, upgrade:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
@@ -91,6 +92,31 @@ Some tools produce large output. Always **start narrow, expand if needed**:
 - Set `max_results`, `max_depth`, or `max_nodes` conservatively first
 - Add `path`, `kind`, or `language` filters to reduce noise
 - Prefer `get_hover_info` over `explain_code` for quick lookups
+
+sqry-mcp truncates serialised tool responses at **50 000 bytes** by default
+(UTF-8 boundary safe). Override with `SQRY_MCP_MAX_OUTPUT_BYTES=<n>` when
+your transport accepts larger payloads.
+
+## What's New in sqry 12.x
+
+- **36 MCP tools** (was 34): `workspace_status` returns the aggregate logical
+  workspace status; `sqry_query` runs the structural query planner directly
+  (e.g. `kind:function has:caller:main`); `expand_cache_status` reports
+  Rust macro-expansion cache state.
+- **LSP `executeCommand` capability**: editors can invoke `sqry.index`,
+  `sqry.showCallers`, `sqry.showReferences`, and `sqry.explainSymbol` as
+  workspace commands.
+- **Caller-count code lenses** above each definition (LSP).
+- **`sqry::unused`, `sqry::cycle`, `sqry::duplicate` diagnostics** published
+  on document open / save.
+- **`sqry lsp --workspace <path>`** now resolves workspaces the same way
+  MCP does (explicit > file-bearing > MCP roots > last resolved > env/CWD).
+- **`SQRY_MCP_MAX_OUTPUT_BYTES`** env var caps tool response size.
+- **`sqry index --cache-dir <path>`** persists `HashIndex` snapshots for
+  faster incremental indexing.
+- **`sqry index --no-incremental`** forces a full rebuild.
+- **`sqry index --metrics-format prometheus`** restored.
+- **`--no-compress` removed** (compression is always on).
 
 ## When NOT to Use sqry
 

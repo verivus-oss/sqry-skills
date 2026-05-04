@@ -1,6 +1,6 @@
 ---
 name: sqry-claude
-version: 10.0.1
+version: 12.1.6
 description: |
   Setup and workflow for using sqry semantic code search as an MCP server with Claude Code. Covers installation, MCP configuration, tool naming conventions, and troubleshooting. Tool reference and query syntax are served live by the sqry-mcp binary.
 ---
@@ -11,8 +11,11 @@ This skill configures Claude Code to use sqry's MCP server for AST-based semanti
 
 ## Setup
 
-Requires **sqry >= 4.0** for MCP resources. Use **sqry >= 10.0.1** for
-workspace-aware status and daemon-backed MCP workflows.
+Requires **sqry >= 4.0** for MCP resources. Use **sqry >= 12.1.6** for the
+36-tool MCP catalogue (adds `workspace_status`, `sqry_query`, and
+`expand_cache_status`), the LSP `executeCommand` capability, caller-count
+code lenses, unused/cycle/duplicate diagnostics, and daemon-backed
+workspace status.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all

@@ -51,19 +51,37 @@ When sqry adds new tools or languages, you get them automatically by upgrading t
 
 sqry is a semantic code search tool that parses code like a compiler to understand structure and relationships. Unlike embedding-based search that treats code as text, sqry builds an AST-powered graph of your codebase.
 
-## sqry 10.x Notes
+## sqry 12.x Notes
 
-Current sqry releases add workspace-aware indexing and daemon-backed operation:
+Current sqry releases (12.1.6+) ship a 36-tool MCP catalogue, expanded LSP
+surface, and daemon-backed workspace operation:
 
+- **36 MCP tools** (was 34) — `workspace_status`, `sqry_query`, and
+  `expand_cache_status` are now runtime-enabled alongside the prior 33.
+- **LSP `executeCommand` capability** — editors can invoke
+  `sqry.index`, `sqry.showCallers`, `sqry.showReferences`, and
+  `sqry.explainSymbol` as workspace commands.
+- **Caller-count code lenses** above each definition.
+- **`sqry::unused`, `sqry::cycle`, `sqry::duplicate` diagnostics** published
+  on document open/save.
+- **32 custom `sqry/*` LSP methods** (semantic search, relations, graph
+  analysis, code quality, introspection, diff, NL, explain).
 - Use `.sqry-workspace` or a VS Code `.code-workspace` `sqry.workspace` block
   to describe multi-repository source roots.
 - Use `sqry workspace status <workspace> --json --no-cache` to inspect the
   same aggregate source-root status used by LSP and VS Code.
 - For repeated assistant calls, keep the graph warm with `sqry daemon start`,
-  `sqry daemon load <path>`, and launch MCP with `sqry-mcp --daemon`.
-- MCP tools now use session-scoped workspace resolution: explicit `path`
+  `sqry daemon load <path>`, and launch MCP with `sqry-mcp --daemon`. The
+  daemon auto-starts on miss unless `SQRY_DAEMON_NO_AUTO_START=1` is set.
+- MCP tools use session-scoped workspace resolution: explicit `path`
   arguments win, then file-bearing arguments, MCP roots, last-resolved
-  workspace, and legacy environment/CWD fallback.
+  workspace, and legacy environment/CWD fallback. `sqry lsp --workspace`
+  honors the same precedence.
+- `SQRY_MCP_MAX_OUTPUT_BYTES` caps tool response size (default 50 000 bytes,
+  UTF-8 boundary safe).
+- `sqry index --cache-dir <path>` persists `HashIndex` snapshots;
+  `--no-incremental` forces a full rebuild;
+  `--metrics-format prometheus` exposes index validation metrics.
 
 Install for MCP usage:
 
