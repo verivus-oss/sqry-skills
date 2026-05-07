@@ -1,8 +1,8 @@
 ---
 name: sqry-semantic-search
-version: 12.1.6
+version: 13.0.7
 description: |
-  AST-based semantic code search skill for AI agents. Teaches agents to use sqry's 36-tool MCP catalogue for finding symbols by structure, tracing relationships, analyzing dependencies, and detecting code quality issues. Unlike embedding-based search, sqry parses code like a compiler. Tool reference and query syntax are served live by the sqry-mcp binary — always current with your installed version.
+  AST-based semantic code search skill for AI agents. Teaches agents to route code search tasks to sqry MCP resources and tools without duplicating version-specific tool reference. Unlike embedding-based search, sqry parses code like a compiler.
 ---
 
 # sqry Semantic Code Search Skill
@@ -19,10 +19,9 @@ Use this skill when users ask to:
 
 ## Setup
 
-Requires **sqry >= 4.0** for MCP resources. Use **sqry >= 12.1.6** for the
-current 36-tool MCP catalogue, the LSP `executeCommand` capability + caller
-code lenses + unused/cycle/duplicate diagnostics, and daemon-backed workspace
-status. If you are on an older version, upgrade:
+Requires **sqry >= 4.0** for MCP resources. Use the latest sqry release for
+the current MCP catalogue, workspace-aware resolution, and daemon-backed
+operation. If you are on an older version, upgrade:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
@@ -61,8 +60,8 @@ Tool reference, query syntax, and workflow recipes are served by the sqry-mcp bi
 
 ## Workspace-Aware Usage
 
-sqry 10.x can resolve a logical workspace from a `.sqry-workspace` registry or
-a VS Code `.code-workspace` file containing `sqry.workspace`.
+sqry can resolve a logical workspace from a `.sqry-workspace` registry or a
+VS Code `.code-workspace` file containing `sqry.workspace`.
 
 When working in a multi-root session:
 
@@ -97,26 +96,12 @@ sqry-mcp truncates serialised tool responses at **50 000 bytes** by default
 (UTF-8 boundary safe). Override with `SQRY_MCP_MAX_OUTPUT_BYTES=<n>` when
 your transport accepts larger payloads.
 
-## What's New in sqry 12.x
+## Version-Specific Capabilities
 
-- **36 MCP tools** (was 34): `workspace_status` returns the aggregate logical
-  workspace status; `sqry_query` runs the structural query planner directly
-  (e.g. `kind:function has:caller:main`); `expand_cache_status` reports
-  Rust macro-expansion cache state.
-- **LSP `executeCommand` capability**: editors can invoke `sqry.index`,
-  `sqry.showCallers`, `sqry.showReferences`, and `sqry.explainSymbol` as
-  workspace commands.
-- **Caller-count code lenses** above each definition (LSP).
-- **`sqry::unused`, `sqry::cycle`, `sqry::duplicate` diagnostics** published
-  on document open / save.
-- **`sqry lsp --workspace <path>`** now resolves workspaces the same way
-  MCP does (explicit > file-bearing > MCP roots > last resolved > env/CWD).
-- **`SQRY_MCP_MAX_OUTPUT_BYTES`** env var caps tool response size.
-- **`sqry index --cache-dir <path>`** persists `HashIndex` snapshots for
-  faster incremental indexing.
-- **`sqry index --no-incremental`** forces a full rebuild.
-- **`sqry index --metrics-format prometheus`** restored.
-- **`--no-compress` removed** (compression is always on).
+Do not rely on this skill for a static tool list. Read `sqry://meta/manifest`
+to confirm the installed server version and counts, then read
+`sqry://docs/capability-map` and `sqry://docs/tool-guide` for current tools,
+parameters, limits, and workflow guidance.
 
 ## When NOT to Use sqry
 
@@ -129,6 +114,6 @@ your transport accepts larger payloads.
 
 - **No tools visible**: Restart your agent after running `sqry mcp setup --tool <agent>`
 - **Empty results**: Run `sqry index .` to build/rebuild the index
-- **Stale results**: Run `sqry index --force .` to force rebuild
-- **Snapshot version mismatch**: Run `rm -rf .sqry/graph && sqry index .` after major upgrades
+- **Stale results or graph-format upgrade**: Run `sqry index --force .` to force rebuild
+- **Corrupt snapshot after force rebuild**: Run `rm -rf .sqry/graph && sqry index .`
 - **Missing JSON/ServiceNow symbols**: Rebuild with `sqry index --include-high-cost`

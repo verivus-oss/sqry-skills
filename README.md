@@ -51,21 +51,15 @@ When sqry adds new tools or languages, you get them automatically by upgrading t
 
 sqry is a semantic code search tool that parses code like a compiler to understand structure and relationships. Unlike embedding-based search that treats code as text, sqry builds an AST-powered graph of your codebase.
 
-## sqry 12.x Notes
+## Current sqry Notes
 
-Current sqry releases (12.1.6+) ship a 36-tool MCP catalogue, expanded LSP
-surface, and daemon-backed workspace operation:
+The live MCP resource set is the source of truth for the installed sqry
+version. After configuring MCP, read `sqry://meta/manifest` for the exact
+version, tool count, and language count, then use `sqry://docs/capability-map`
+and `sqry://docs/tool-guide` for current tool routing and parameters.
 
-- **36 MCP tools** (was 34) — `workspace_status`, `sqry_query`, and
-  `expand_cache_status` are now runtime-enabled alongside the prior 33.
-- **LSP `executeCommand` capability** — editors can invoke
-  `sqry.index`, `sqry.showCallers`, `sqry.showReferences`, and
-  `sqry.explainSymbol` as workspace commands.
-- **Caller-count code lenses** above each definition.
-- **`sqry::unused`, `sqry::cycle`, `sqry::duplicate` diagnostics** published
-  on document open/save.
-- **32 custom `sqry/*` LSP methods** (semantic search, relations, graph
-  analysis, code quality, introspection, diff, NL, explain).
+Stable operational notes:
+
 - Use `.sqry-workspace` or a VS Code `.code-workspace` `sqry.workspace` block
   to describe multi-repository source roots.
 - Use `sqry workspace status <workspace> --json --no-cache` to inspect the
@@ -79,9 +73,8 @@ surface, and daemon-backed workspace operation:
   honors the same precedence.
 - `SQRY_MCP_MAX_OUTPUT_BYTES` caps tool response size (default 50 000 bytes,
   UTF-8 boundary safe).
-- `sqry index --cache-dir <path>` persists `HashIndex` snapshots;
-  `--no-incremental` forces a full rebuild;
-  `--metrics-format prometheus` exposes index validation metrics.
+- `sqry index --force <path>` is the preferred repair step after upgrading
+  across releases that change graph semantics.
 
 Install for MCP usage:
 

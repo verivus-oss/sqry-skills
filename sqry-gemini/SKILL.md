@@ -1,6 +1,6 @@
 ---
 name: sqry-gemini
-version: 12.1.6
+version: 13.0.7
 description: |
   Setup and workflow for using sqry semantic code search as an MCP server with Gemini CLI. Covers installation, MCP configuration, and troubleshooting. Tool reference and query syntax are served live by the sqry-mcp binary.
 ---
@@ -11,9 +11,9 @@ This skill configures the Gemini CLI agent to use sqry's MCP server for AST-base
 
 ## Setup
 
-Requires **sqry >= 4.0** for MCP resources. Use **sqry >= 12.1.6** for the
-36-tool MCP catalogue (adds `workspace_status`, `sqry_query`, and
-`expand_cache_status`) and daemon-backed workspace status.
+Requires **sqry >= 4.0** for MCP resources. Use the latest sqry release for
+the current MCP catalogue, workspace-aware resolution, and daemon-backed
+operation.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
@@ -79,7 +79,7 @@ Use grep/rg for literal text search.
 
 - **No tools visible**: Restart Gemini CLI after `sqry mcp setup --tool gemini`
 - **Empty results**: Run `sqry index .` to build the index
-- **Stale results**: Run `sqry index --force .` to force rebuild
-- **Snapshot mismatch**: Run `rm -rf .sqry/graph && sqry index .` after major upgrades
+- **Stale results or graph-format upgrade**: Run `sqry index --force .` to force rebuild
+- **Corrupt snapshot after force rebuild**: Run `rm -rf .sqry/graph && sqry index .`
 - **Transport error on resource read**: MCP server not running — check `sqry mcp status`
 - **404 on `sqry://meta/manifest`**: Old server version — resources still available via `sqry://docs/tool-guide`

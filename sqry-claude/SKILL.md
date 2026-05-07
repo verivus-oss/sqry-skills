@@ -1,6 +1,6 @@
 ---
 name: sqry-claude
-version: 12.1.6
+version: 13.0.7
 description: |
   Setup and workflow for using sqry semantic code search as an MCP server with Claude Code. Covers installation, MCP configuration, tool naming conventions, and troubleshooting. Tool reference and query syntax are served live by the sqry-mcp binary.
 ---
@@ -11,11 +11,9 @@ This skill configures Claude Code to use sqry's MCP server for AST-based semanti
 
 ## Setup
 
-Requires **sqry >= 4.0** for MCP resources. Use **sqry >= 12.1.6** for the
-36-tool MCP catalogue (adds `workspace_status`, `sqry_query`, and
-`expand_cache_status`), the LSP `executeCommand` capability, caller-count
-code lenses, unused/cycle/duplicate diagnostics, and daemon-backed
-workspace status.
+Requires **sqry >= 4.0** for MCP resources. Use the latest sqry release for
+the current MCP catalogue, LSP capabilities, workspace-aware resolution, and
+daemon-backed operation.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
@@ -81,7 +79,7 @@ Use Grep for literal text search. Use Glob for file finding.
 
 - **No tools visible**: Restart Claude Code after `sqry mcp setup --tool claude`
 - **Empty results**: Run `sqry index .` to build the index
-- **Stale results**: Run `sqry index --force .` to force rebuild
-- **Snapshot mismatch**: Run `rm -rf .sqry/graph && sqry index .` after major upgrades
+- **Stale results or graph-format upgrade**: Run `sqry index --force .` to force rebuild
+- **Corrupt snapshot after force rebuild**: Run `rm -rf .sqry/graph && sqry index .`
 - **Transport error on resource read**: MCP server not running — check `sqry mcp status`
 - **404 on `sqry://meta/manifest`**: Old server version — resources still available via `sqry://docs/tool-guide`
