@@ -38,6 +38,26 @@ sqry daemon load .
 sqry-mcp --daemon
 ```
 
+## Interim Reliability Notice
+
+As of 2026-05-07, daemon-backed graph rebuild and relation-cache behavior is
+under active repair for the following known issues:
+
+- Daemon rebuild paths may refresh the daemon's in-memory graph and
+  `.sqry/graph/snapshot.sqry` without refreshing `.sqry/graph/manifest.json`
+  and `.sqry/analysis/*`.
+- Relation tools such as `direct_callers`, `direct_callees`, and related
+  call-hierarchy workflows may fall back to expensive cold graph scans when
+  `.sqry/graph/derived.sqry` is missing or does not contain the requested key.
+- Warm-cache population is being redesigned so `derived.sqry` remains a
+  best-effort cache while becoming workload-aware and useful.
+
+Until the fix is confirmed, do not treat daemon-hosted `rebuild_index`,
+`sqry daemon rebuild`, or relation-tool results as fully authoritative for
+production validation by themselves. Cross-check critical findings with
+`sqry index --force .`, `sqry index --status --json .`, and narrow source-file
+inspection when relation tools time out or disagree with persisted artifacts.
+
 ## Live Documentation (from sqry MCP server)
 
 Tool reference, query syntax, and workflow recipes are served by the sqry-mcp binary. They always match your installed version.

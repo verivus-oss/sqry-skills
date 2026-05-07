@@ -57,6 +57,11 @@ the `sqry` MCP server entry.
 
 **Also load the `sqry-semantic-search` skill** for disambiguation tips, output size guidance, and the MCP resource routing table.
 
+Also observe its interim reliability notice: daemon-hosted rebuild and relation
+cache behavior is under active repair as of 2026-05-07. Do not rely on
+daemon-backed rebuild artifacts or relation-tool cold results as the sole
+production validation until that notice is removed.
+
 ## Tool Naming
 
 Gemini CLI uses the `mcp__sqry__` prefix for sqry MCP tools.
