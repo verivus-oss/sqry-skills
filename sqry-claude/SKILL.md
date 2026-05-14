@@ -1,37 +1,43 @@
 ---
 name: sqry-claude
-version: 13.0.7
+version: 15.0.6
 description: |
-  Setup and workflow for using sqry semantic code search as an MCP server with Claude Code. Covers installation, MCP configuration, tool naming conventions, and troubleshooting. Tool reference and query syntax are served live by the sqry-mcp binary.
+  Setup and workflow for using sqry semantic code search as an MCP server with Claude Code. Covers installation, MCP configuration, tool naming conventions, CLI fallback, and troubleshooting. Tool reference and query syntax are served live by sqry-mcp.
 ---
 
 # sqry for Claude Code
 
-This skill configures Claude Code to use sqry's MCP server for AST-based semantic code search.
+Use this skill to configure Claude Code for sqry v15.0.6 MCP-backed semantic code search.
 
 ## Setup
 
-Requires **sqry >= 4.0** for MCP resources. Use the latest sqry release for
-the current MCP catalogue, LSP capabilities, workspace-aware resolution, and
-daemon-backed operation.
+Install or upgrade sqry:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
+sqry --version
+sqry-mcp --version
+sqry-lsp --version
+sqryd --version
+```
+
+Index the project:
+
+```bash
 cd /path/to/your/project
 sqry index .
+sqry index --status --json .
+```
+
+Configure Claude Code:
+
+```bash
 sqry mcp setup --tool claude
 sqry mcp status
 ```
 
 This writes a Claude Code entry in `.claude.json` or `~/.claude.json` pointing to `sqry-mcp`.
-
-For long-running sessions or large repositories, run MCP through the daemon:
-
-```bash
-sqry daemon start
-sqry daemon load .
-sqry-mcp --daemon
-```
+Restart Claude Code after setup so it reloads MCP servers.
 
 Manual config:
 
@@ -41,34 +47,43 @@ Manual config:
     "sqry": {
       "type": "stdio",
       "command": "/absolute/path/to/sqry-mcp",
-      "env": { "SQRY_MCP_WORKSPACE_ROOT": "/path/to/your/project" }
+      "env": {
+        "SQRY_MCP_WORKSPACE_ROOT": "/path/to/your/project"
+      }
     }
   }
 }
 ```
 
-To use daemon-backed MCP manually, add `"args": ["--daemon"]` to the server
-entry. If the daemon is not already running, `sqry-mcp --daemon` auto-starts it
-unless `SQRY_DAEMON_NO_AUTO_START=1` is set.
+For daemon-backed MCP:
 
-Verify: after restarting Claude Code, ask "Use sqry to show graph stats for this project" — this should invoke `mcp__sqry__get_graph_stats`.
+```bash
+sqry daemon start
+sqry daemon load .
+sqry-mcp --daemon
+```
+
+Add `"args": ["--daemon"]` to the Claude server entry when using daemon mode.
 
 ## Skill Dependency
 
-**Also load the `sqry-semantic-search` skill** for disambiguation tips, output size guidance, and the MCP resource routing table.
-
-Also observe its interim reliability notice: daemon-hosted rebuild and relation
-cache behavior is under active repair as of 2026-05-07. Do not rely on
-daemon-backed rebuild artifacts or relation-tool cold results as the sole
-production validation until that notice is removed.
+Also load `sqry-semantic-search`. It contains the shared routing rules, CLI fallback commands, ambiguity handling, output-size limits, and rebuild recovery steps.
 
 ## Tool Naming
 
-All sqry MCP tools use the `mcp__sqry__` prefix in Claude Code.
+Claude Code commonly exposes sqry MCP tools with the `mcp__sqry__` prefix, for example `mcp__sqry__semantic_search` and `mcp__sqry__get_graph_stats`.
 
-## Reading MCP Resources
+Read `sqry://meta/manifest` first when resources are available, then use `sqry://docs/capability-map` and `sqry://docs/tool-guide` for the exact installed tool surface.
 
-Claude Code reads sqry resources via `ReadMcpResourceTool`. The routing table in sqry-semantic-search tells you which resource to read for each task.
+## CLI Fallback
+
+If Claude Code cannot see sqry MCP tools after setup or before restart, use:
+
+```bash
+sqry query 'kind:function AND name:authenticate' --json
+sqry graph direct-callers "AuthService::authenticate" --json
+sqry impact "AuthService::authenticate" --json
+```
 
 ## Recommended CLAUDE.md Addition
 
@@ -77,14 +92,14 @@ Claude Code reads sqry resources via `ReadMcpResourceTool`. The routing table in
 
 Use sqry MCP tools (`mcp__sqry__*`) for semantic code search.
 Read `sqry://docs/capability-map` to find the right tool.
-Use Grep for literal text search. Use Glob for file finding.
+Use `sqry` CLI as fallback when MCP is unavailable.
+Use Grep for literal text search and Glob for file finding.
 ```
 
 ## Troubleshooting
 
-- **No tools visible**: Restart Claude Code after `sqry mcp setup --tool claude`
-- **Empty results**: Run `sqry index .` to build the index
-- **Stale results or graph-format upgrade**: Run `sqry index --force .` to force rebuild
-- **Corrupt snapshot after force rebuild**: Run `rm -rf .sqry/graph && sqry index .`
-- **Transport error on resource read**: MCP server not running — check `sqry mcp status`
-- **404 on `sqry://meta/manifest`**: Old server version — resources still available via `sqry://docs/tool-guide`
+- No tools visible: restart Claude Code after `sqry mcp setup --tool claude`.
+- Empty results: run `sqry index .` from the project root, or `sqry index --force .` after an upgrade or stale graph warning.
+- Stale graph or unknown plugin IDs: remove `.sqry/graph`, `.sqry/graphs`, and `.sqry/analysis`, then rebuild.
+- Transport error on resource read: MCP server is not running or not configured.
+- 404 on `sqry://meta/manifest`: old server version; upgrade sqry.

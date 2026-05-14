@@ -1,27 +1,42 @@
 ---
 name: sqry-gemini
-version: 13.0.7
+version: 15.0.6
 description: |
-  Setup and workflow for using sqry semantic code search as an MCP server with Gemini CLI. Covers installation, MCP configuration, and troubleshooting. Tool reference and query syntax are served live by the sqry-mcp binary.
+  Setup and workflow for using sqry semantic code search as an MCP server with Gemini CLI. Covers installation, MCP configuration, CLI fallback, and troubleshooting. Tool reference and query syntax are served live by sqry-mcp.
 ---
 
 # sqry for Gemini CLI
 
-This skill configures the Gemini CLI agent to use sqry's MCP server for AST-based semantic code search.
+Use this skill to configure Gemini CLI for sqry v15.0.6 MCP-backed semantic code search.
 
 ## Setup
 
-Requires **sqry >= 4.0** for MCP resources. Use the latest sqry release for
-the current MCP catalogue, workspace-aware resolution, and daemon-backed
-operation.
+Install or upgrade sqry:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
+sqry --version
+sqry-mcp --version
+sqry-lsp --version
+sqryd --version
+```
+
+Index the project:
+
+```bash
 cd /path/to/your/project
 sqry index .
+sqry index --status --json .
+```
+
+Configure Gemini:
+
+```bash
 sqry mcp setup --tool gemini
 sqry mcp status
 ```
+
+Restart Gemini CLI after setup so it reloads MCP servers.
 
 This writes a global entry to `~/.gemini/settings.json`:
 
@@ -37,12 +52,9 @@ This writes a global entry to `~/.gemini/settings.json`:
 }
 ```
 
-Gemini uses sqry-mcp's session-scoped workspace resolution: explicit `path`
-arguments first, then file-bearing arguments, MCP roots, last-resolved
-workspace, and finally legacy environment/CWD fallback. Start Gemini from the
-project directory for the simplest single-repo flow.
+Gemini uses sqry-mcp's session-scoped workspace resolution: explicit `path` arguments first, then file-bearing arguments, MCP roots, last-resolved workspace, and legacy environment/CWD fallback. Start Gemini from the project directory for the simplest single-repo flow.
 
-For long-running sessions or large repositories, run MCP through the daemon:
+For daemon-backed MCP:
 
 ```bash
 sqry daemon start
@@ -50,25 +62,27 @@ sqry daemon load .
 sqry-mcp --daemon
 ```
 
-To use daemon-backed MCP from Gemini config, set `"args": ["--daemon"]` under
-the `sqry` MCP server entry.
+Set `"args": ["--daemon"]` under the `sqry` MCP server entry when using daemon mode.
 
 ## Skill Dependency
 
-**Also load the `sqry-semantic-search` skill** for disambiguation tips, output size guidance, and the MCP resource routing table.
-
-Also observe its interim reliability notice: daemon-hosted rebuild and relation
-cache behavior is under active repair as of 2026-05-07. Do not rely on
-daemon-backed rebuild artifacts or relation-tool cold results as the sole
-production validation until that notice is removed.
+Also load `sqry-semantic-search`. It contains the shared routing rules, CLI fallback commands, ambiguity handling, output-size limits, and rebuild recovery steps.
 
 ## Tool Naming
 
-Gemini CLI uses the `mcp__sqry__` prefix for sqry MCP tools.
+Gemini CLI commonly exposes sqry MCP tools with the `mcp__sqry__` prefix, for example `mcp__sqry__semantic_search` and `mcp__sqry__get_graph_stats`.
 
-## Reading MCP Resources
+Read `sqry://meta/manifest` first when resources are available, then use `sqry://docs/capability-map` and `sqry://docs/tool-guide` for the exact installed tool surface.
 
-Gemini reads sqry resources via its MCP integration. The routing table in sqry-semantic-search tells you which resource to read for each task.
+## CLI Fallback
+
+If Gemini cannot see sqry MCP tools after setup or before restart, use:
+
+```bash
+sqry query 'kind:function AND name:authenticate' --json
+sqry graph direct-callers "AuthService::authenticate" --json
+sqry impact "AuthService::authenticate" --json
+```
 
 ## Recommended GEMINI.md Addition
 
@@ -77,14 +91,14 @@ Gemini reads sqry resources via its MCP integration. The routing table in sqry-s
 
 Use sqry MCP tools for semantic code search.
 Read `sqry://docs/capability-map` to find the right tool.
+Use `sqry` CLI as fallback when MCP is unavailable.
 Use grep/rg for literal text search.
 ```
 
 ## Troubleshooting
 
-- **No tools visible**: Restart Gemini CLI after `sqry mcp setup --tool gemini`
-- **Empty results**: Run `sqry index .` to build the index
-- **Stale results or graph-format upgrade**: Run `sqry index --force .` to force rebuild
-- **Corrupt snapshot after force rebuild**: Run `rm -rf .sqry/graph && sqry index .`
-- **Transport error on resource read**: MCP server not running — check `sqry mcp status`
-- **404 on `sqry://meta/manifest`**: Old server version — resources still available via `sqry://docs/tool-guide`
+- No tools visible: restart Gemini CLI after `sqry mcp setup --tool gemini`.
+- Empty results: run `sqry index .` from the project root, or `sqry index --force .` after an upgrade or stale graph warning.
+- Stale graph or unknown plugin IDs: remove `.sqry/graph`, `.sqry/graphs`, and `.sqry/analysis`, then rebuild.
+- Transport error on resource read: MCP server is not running or not configured.
+- 404 on `sqry://meta/manifest`: old server version; upgrade sqry.

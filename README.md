@@ -1,6 +1,8 @@
 # sqry Skills
 
-Agent skills for [sqry](https://github.com/verivus-oss/sqry) — AST-based semantic code search.
+Agent skills for [sqry](https://github.com/verivus-oss/sqry) - AST-based semantic code search.
+
+These skills are aligned with public `verivus-oss/sqry` v15.0.6.
 
 ## Install
 
@@ -8,79 +10,96 @@ Agent skills for [sqry](https://github.com/verivus-oss/sqry) — AST-based seman
 # All skills
 npx skills add https://github.com/verivus-oss/sqry-skills
 
-# Individual skill
+# Individual skills
 npx skills add https://github.com/verivus-oss/sqry-skills --skill sqry-semantic-search
 npx skills add https://github.com/verivus-oss/sqry-skills --skill sqry-claude
 npx skills add https://github.com/verivus-oss/sqry-skills --skill sqry-codex
 npx skills add https://github.com/verivus-oss/sqry-skills --skill sqry-gemini
+npx skills add https://github.com/verivus-oss/sqry-skills --skill sqry-grok
 ```
 
 ## Skills
 
 | Skill | Agent | Description |
 |-------|-------|-------------|
-| [sqry-semantic-search](sqry-semantic-search/) | All | Core skill: MCP resource routing table, disambiguation tips, output size guidance |
+| [sqry-semantic-search](sqry-semantic-search/) | All | Core skill: MCP routing, CLI fallback, disambiguation, output size guidance |
 | [sqry-claude](sqry-claude/) | Claude Code | Setup and MCP configuration for Claude Code |
 | [sqry-codex](sqry-codex/) | OpenAI Codex | Setup and MCP configuration for Codex CLI |
 | [sqry-gemini](sqry-gemini/) | Gemini CLI | Setup and MCP configuration for Gemini CLI |
+| [sqry-grok](sqry-grok/) | Grok | CLI-first recovery and optional MCP configuration guidance for Grok |
 
-## Architecture: Auto-Updating via MCP Resources
+## Architecture: Live MCP Resources + Reliable CLI Fallback
 
-These skills use a **resource delegation** architecture. Tool reference, query syntax, workflow recipes, and language support are served live by the sqry-mcp binary as MCP resources — they always match your installed sqry version.
+sqry skills use a resource delegation architecture. Tool reference, query syntax, workflow recipes, and language support are served live by the `sqry-mcp` binary as MCP resources, so they match the installed sqry version.
 
-Skills only contain **stable, agent-specific content** that rarely changes:
-- Setup instructions (install, index, configure MCP)
-- Tool naming conventions (`mcp__sqry__` prefix)
-- Disambiguation tips and output size guidance
-- Troubleshooting
+Skills contain stable, agent-facing content:
 
-When sqry adds new tools or languages, you get them automatically by upgrading the binary. No need to re-install skills.
+- install, index, and MCP setup instructions;
+- tool naming and discovery conventions for each agent;
+- CLI fallback commands for sessions where MCP is not connected;
+- disambiguation tips, output size guidance, and troubleshooting.
 
-### MCP Resources (served by sqry-mcp)
+When sqry adds tools or languages, upgrade the sqry binary and read the live MCP resources. Reinstalling skills is only needed when agent setup guidance changes.
+
+### MCP Resources
 
 | Resource | Content |
 |----------|---------|
-| `sqry://meta/manifest` | Version, tool count, language count (JSON) |
+| `sqry://meta/manifest` | Version, tool count, language count, snapshot format, defaults |
 | `sqry://docs/capability-map` | Task-oriented tool routing |
 | `sqry://docs/tool-guide` | Complete tool reference with parameters |
 | `sqry://docs/query-syntax` | Query language reference |
 | `sqry://docs/patterns` | Workflow recipes |
 | `sqry://docs/architecture` | Graph internals |
 
-## What is sqry?
-
-sqry is a semantic code search tool that parses code like a compiler to understand structure and relationships. Unlike embedding-based search that treats code as text, sqry builds an AST-powered graph of your codebase.
-
 ## Current sqry Notes
 
-The live MCP resource set is the source of truth for the installed sqry
-version. After configuring MCP, read `sqry://meta/manifest` for the exact
-version, tool count, and language count, then use `sqry://docs/capability-map`
-and `sqry://docs/tool-guide` for current tool routing and parameters.
+Public `verivus-oss/sqry` v15.0.6 uses:
 
-Stable operational notes:
+- Rust 1.94+, Edition 2024
+- 37 languages: 28 with full relation support, 9 with symbol extraction
+- 36 MCP tools
+- snapshot format V7
+- default MCP redaction preset: `minimal`
+- default query timeout: 60s
+- default index timeout: 600s
 
-- Use `.sqry-workspace` or a VS Code `.code-workspace` `sqry.workspace` block
-  to describe multi-repository source roots.
-- Use `sqry workspace status <workspace> --json --no-cache` to inspect the
-  same aggregate source-root status used by LSP and VS Code.
-- For repeated assistant calls, keep the graph warm with `sqry daemon start`,
-  `sqry daemon load <path>`, and launch MCP with `sqry-mcp --daemon`. The
-  daemon auto-starts on miss unless `SQRY_DAEMON_NO_AUTO_START=1` is set.
-- MCP tools use session-scoped workspace resolution: explicit `path`
-  arguments win, then file-bearing arguments, MCP roots, last-resolved
-  workspace, and legacy environment/CWD fallback. `sqry lsp --workspace`
-  honors the same precedence.
-- `SQRY_MCP_MAX_OUTPUT_BYTES` caps tool response size (default 50 000 bytes,
-  UTF-8 boundary safe).
-- `sqry index --force <path>` is the preferred repair step after upgrading
-  across releases that change graph semantics.
-
-Install for MCP usage:
+Install or upgrade sqry:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh | bash -s -- --component all
+sqry --version
+sqry-mcp --version
+sqry-lsp --version
+sqryd --version
 ```
+
+For normal setup, build the index from the project root:
+
+```bash
+sqry index .
+sqry index --status --json .
+```
+
+After upgrading across versions that change graph semantics, force a rebuild:
+
+```bash
+sqry index --force .
+sqry index --status --json .
+```
+
+If a stale graph reports unknown plugin IDs, remove persisted graph artifacts and rebuild:
+
+```bash
+rm -rf .sqry/graph .sqry/graphs .sqry/analysis
+sqry index --force .
+```
+
+The MCP manifest reports the compiled language/tool surface. The CLI `sqry --list-languages` command may show only the default-enabled language plugins unless high-cost or optional plugins are enabled for indexing.
+
+## What is sqry?
+
+sqry parses source code into ASTs and builds a graph of symbols and relationships. It answers structural questions such as callers, callees, references, unused symbols, cycles, duplicates, dependency impact, and semantic diffs from the indexed graph instead of guessing from source text.
 
 ## License
 
