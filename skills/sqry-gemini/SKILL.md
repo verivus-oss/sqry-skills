@@ -1,13 +1,13 @@
 ---
 name: sqry-gemini
-version: 15.0.6
+version: 20.0.5
 description: |
   Setup and workflow for using sqry semantic code search as an MCP server with Gemini CLI. Covers installation, MCP configuration, CLI fallback, and troubleshooting. Tool reference and query syntax are served live by sqry-mcp.
 ---
 
 # sqry for Gemini CLI
 
-Use this skill to configure Gemini CLI for sqry v15.0.6 MCP-backed semantic code search.
+Use this skill to configure Gemini CLI for sqry v20.0.5 MCP-backed semantic code search.
 
 ## Setup
 
@@ -54,15 +54,23 @@ This writes a global entry to `~/.gemini/settings.json`:
 
 Gemini uses sqry-mcp's session-scoped workspace resolution: explicit `path` arguments first, then file-bearing arguments, MCP roots, last-resolved workspace, and legacy environment/CWD fallback. Start Gemini from the project directory for the simplest single-repo flow.
 
-For daemon-backed MCP:
+### MCP mode: standalone vs daemon
+
+**Default:** standalone `sqry-mcp` (no `--daemon`, or `--no-daemon`). Serves **37 tools** and **6 MCP resources** including `sqry://meta/manifest` and `sqry://docs/*`.
+
+**Daemon** (`sqry-mcp --daemon`) warms the graph for long sessions but exposes only a **16-tool subset** and **zero MCP resources** — agents cannot read `sqry://meta/manifest` or docs on the daemon path.
 
 ```bash
+# Standalone — full tools + resources (preferred)
+sqry-mcp --no-daemon
+
+# Daemon — warm graph, reduced tools, no resources
 sqry daemon start
 sqry daemon load .
 sqry-mcp --daemon
 ```
 
-Set `"args": ["--daemon"]` under the `sqry` MCP server entry when using daemon mode.
+Set `"args": ["--daemon"]` only when you accept the 16-tool, no-resource tradeoff.
 
 ## Skill Dependency
 
@@ -101,4 +109,4 @@ Use grep/rg for literal text search.
 - Empty results: run `sqry index .` from the project root, or `sqry index --force .` after an upgrade or stale graph warning.
 - Stale graph or unknown plugin IDs: remove `.sqry/graph`, `.sqry/graphs`, and `.sqry/analysis`, then rebuild.
 - Transport error on resource read: MCP server is not running or not configured.
-- 404 on `sqry://meta/manifest`: old server version; upgrade sqry.
+- 404 on `sqry://meta/manifest`: old server version; upgrade sqry, or switch to standalone `sqry-mcp --no-daemon` (daemon serves zero resources).
