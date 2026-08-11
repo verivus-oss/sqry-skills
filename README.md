@@ -24,7 +24,7 @@ Then in the Grok TUI:
 
 **Benefits**:
 - All 8 skills auto-loaded (namespaced under the `sqry` plugin)
-- `sqry-mcp` auto-registered via `.mcp.json` (standalone `--no-daemon`: 37 tools + MCP docs resources)
+- `sqry-mcp` auto-registered via `.mcp.json` (standalone `--no-daemon`: 39 tools + MCP docs resources)
 - `sqry-lsp` registered via `.lsp.json`
 - `scripts/doctor.sh` and `scripts/install-sqry.sh` available
 - Works for Grok Build, Claude Code, and other Claude-compat hosts with **zero extra config**
@@ -192,7 +192,7 @@ sqry index --force .
 
 The MCP manifest reports the compiled language/tool surface. The CLI `sqry --list-languages` command may show only the default-enabled language plugins unless high-cost or optional plugins are enabled for indexing.
 
-**MCP mode:** Plugin `.mcp.json` uses standalone `sqry-mcp --no-daemon` (37 tools, six resources including `sqry://meta/manifest`). Daemon mode (`sqry-mcp --daemon`) exposes only 16 tools and zero MCP resources — use it only when you do not need manifest/docs resources.
+**MCP mode:** Plugin `.mcp.json` uses standalone `sqry-mcp --no-daemon` (39 tools, six resources including `sqry://meta/manifest`). Daemon mode (`sqry-mcp --daemon`) exposes only 17 tools and zero MCP resources — use it only when you do not need manifest/docs resources.
 
 After upgrading sqry, regenerate pinned version/tool-count lines in this repo:
 
