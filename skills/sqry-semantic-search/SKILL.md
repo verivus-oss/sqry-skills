@@ -82,9 +82,9 @@ After MCP setup, restart the agent. The current session usually cannot reload ne
 
 ### MCP mode: standalone vs daemon
 
-**Default for manifest/docs workflows:** use standalone `sqry-mcp` (no `--daemon` flag, or explicit `--no-daemon`). Standalone serves **37 tools** and **6 MCP resources** including `sqry://meta/manifest` and `sqry://docs/*`.
+**Default for manifest/docs workflows:** use standalone `sqry-mcp` (no `--daemon` flag, or explicit `--no-daemon`). Standalone serves **39 tools** and **6 MCP resources** including `sqry://meta/manifest` and `sqry://docs/*`.
 
-**Daemon mode** (`sqry-mcp --daemon`) is for long sessions with a warm graph, but today it exposes only a **16-tool subset** and **zero MCP resources** — you cannot read `sqry://meta/manifest` or other docs on the daemon path. Do not recommend daemon then instruct reading MCP resources in the same workflow.
+**Daemon mode** (`sqry-mcp --daemon`) is for long sessions with a warm graph, but today it exposes only a **17-tool subset** and **zero MCP resources** — you cannot read `sqry://meta/manifest` or other docs on the daemon path. Do not recommend daemon then instruct reading MCP resources in the same workflow.
 
 ```bash
 # Standalone — full tool surface + resources (preferred for docs/manifest)
@@ -96,7 +96,7 @@ sqry daemon load .
 sqry-mcp --daemon
 ```
 
-Plugin `.mcp.json` uses standalone by default. Add `"args": ["--daemon"]` only when you accept the 16-tool, no-resource tradeoff.
+Plugin `.mcp.json` uses standalone by default. Add `"args": ["--daemon"]` only when you accept the 17-tool, no-resource tradeoff.
 
 ## Redaction for external LLMs
 

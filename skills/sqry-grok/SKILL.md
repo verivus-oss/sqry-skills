@@ -92,9 +92,9 @@ Add or override an sqry server entry:
 
 ### MCP mode: standalone vs daemon
 
-The plugin `.mcp.json` uses standalone `sqry-mcp --no-daemon` by default (**37 tools**, **6 MCP resources** including `sqry://meta/manifest` and `sqry://docs/*`).
+The plugin `.mcp.json` uses standalone `sqry-mcp --no-daemon` by default (**39 tools**, **6 MCP resources** including `sqry://meta/manifest` and `sqry://docs/*`).
 
-**Daemon** (`sqry-mcp --daemon`) warms the graph for long sessions but exposes only a **16-tool subset** and **zero MCP resources** — agents cannot read `sqry://meta/manifest` or docs on the daemon path. Do not recommend daemon then instruct reading MCP resources in the same workflow.
+**Daemon** (`sqry-mcp --daemon`) warms the graph for long sessions but exposes only a **17-tool subset** and **zero MCP resources** — agents cannot read `sqry://meta/manifest` or docs on the daemon path. Do not recommend daemon then instruct reading MCP resources in the same workflow.
 
 ```bash
 # Standalone — full tools + resources (preferred; plugin default)
@@ -106,7 +106,7 @@ sqry daemon load .
 sqry-mcp --daemon
 ```
 
-Configure Grok with `"args": ["--daemon"]` only when you accept the 16-tool, no-resource tradeoff.
+Configure Grok with `"args": ["--daemon"]` only when you accept the 17-tool, no-resource tradeoff.
 
 After connecting, restart or refresh the Grok session and discover tools with the agent's MCP discovery mechanism. Some Grok environments expose canonical sqry tool names such as `semantic_search`, `direct_callers`, `get_references`, and `get_graph_stats` rather than `mcp__sqry__*` names.
 

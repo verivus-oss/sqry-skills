@@ -56,9 +56,9 @@ Gemini uses sqry-mcp's session-scoped workspace resolution: explicit `path` argu
 
 ### MCP mode: standalone vs daemon
 
-**Default:** standalone `sqry-mcp` (no `--daemon`, or `--no-daemon`). Serves **37 tools** and **6 MCP resources** including `sqry://meta/manifest` and `sqry://docs/*`.
+**Default:** standalone `sqry-mcp` (no `--daemon`, or `--no-daemon`). Serves **39 tools** and **6 MCP resources** including `sqry://meta/manifest` and `sqry://docs/*`.
 
-**Daemon** (`sqry-mcp --daemon`) warms the graph for long sessions but exposes only a **16-tool subset** and **zero MCP resources** — agents cannot read `sqry://meta/manifest` or docs on the daemon path.
+**Daemon** (`sqry-mcp --daemon`) warms the graph for long sessions but exposes only a **17-tool subset** and **zero MCP resources** — agents cannot read `sqry://meta/manifest` or docs on the daemon path.
 
 ```bash
 # Standalone — full tools + resources (preferred)
@@ -70,7 +70,7 @@ sqry daemon load .
 sqry-mcp --daemon
 ```
 
-Set `"args": ["--daemon"]` only when you accept the 16-tool, no-resource tradeoff.
+Set `"args": ["--daemon"]` only when you accept the 17-tool, no-resource tradeoff.
 
 ## Skill Dependency
 
