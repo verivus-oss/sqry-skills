@@ -1,13 +1,13 @@
 ---
 name: sqry-mistralvibe
-version: 20.0.5
+version: 31.0.0
 description: |
   Setup and workflow for using sqry semantic code search with the Mistral Vibe CLI. CLI-first, with MCP configuration via Vibe's config.toml. Covers installation, tool naming conventions, CLI fallback, and troubleshooting. Tool reference and query syntax are served live by sqry-mcp.
 ---
 
 # sqry for Mistral Vibe
 
-Use this skill to drive sqry v20.0.5 semantic code search from the Mistral Vibe CLI (`vibe`). The `sqry` CLI works in every Vibe session; MCP is configured through Vibe's TOML config when you want sqry tools available natively.
+Use this skill to drive sqry v31.0.0 semantic code search from the Mistral Vibe CLI (`vibe`). The `sqry` CLI works in every Vibe session; MCP is configured through Vibe's TOML config when you want sqry tools available natively.
 
 ## Setup
 
@@ -38,7 +38,7 @@ sqry index --status --json .
 
 ## MCP Configuration
 
-Vibe configures MCP servers in TOML, not JSON. Add a `[[mcp_servers]]` table to `~/.vibe/config.toml` (Vibe uses stdio, http, and streamable-http transports; sqry runs over stdio):
+Vibe configures MCP servers in TOML, not JSON, and `sqry mcp setup` has no Vibe target. Add a `[[mcp_servers]]` table to `~/.vibe/config.toml` (Vibe uses stdio, http, and streamable-http transports; sqry runs over stdio):
 
 ```toml
 [[mcp_servers]]
@@ -56,15 +56,15 @@ Restart Vibe after editing `config.toml`. Verify with the `/config` command insi
 
 ### MCP mode: standalone vs daemon
 
-**Default:** standalone `sqry-mcp` (no `--daemon`, or `--no-daemon`). Serves **39 tools** and **6 MCP resources** including `sqry://meta/manifest` and `sqry://docs/*`.
+**Default:** standalone `sqry-mcp --no-daemon`. Serves **39 tools**, **6 MCP resources** (`sqry://meta/manifest` and `sqry://docs/*`) and **6 prompts**.
 
-**Daemon** (`sqry-mcp --daemon`) warms the graph for long sessions but exposes only a **17-tool subset** and **zero MCP resources** — agents cannot read `sqry://meta/manifest` or docs on the daemon path. Do not configure daemon then instruct reading MCP resources in the same workflow.
+**Daemon** (`sqry-mcp --daemon`) warms the graph for long sessions but exposes only a **17-tool subset**, **zero MCP resources** and **zero prompts**: agents cannot read `sqry://meta/manifest` or docs on the daemon path. Do not configure daemon then instruct reading MCP resources in the same workflow. With no flag at all, `sqry-mcp` probes for a running `sqryd` and connects to it when reachable.
 
 ```bash
-# Standalone — full tools + resources (preferred)
+# Standalone: full tools + resources + prompts (preferred)
 sqry-mcp --no-daemon
 
-# Daemon — warm graph, reduced tools, no resources
+# Daemon: warm graph, 17-tool subset, no resources
 sqry daemon start
 sqry daemon load .
 sqry-mcp --daemon
@@ -76,11 +76,11 @@ args = ["--daemon"]   # only when you accept the 17-tool, no-resource tradeoff
 
 ## Redaction for external LLMs
 
-Set `SQRY_REDACTION_PRESET` in the process environment before launching `sqry-mcp` (Vibe does not always expose per-server env in TOML — use a wrapper script or shell export if needed). Presets: `none|minimal|standard|strict` (default `minimal`). See `sqry-mcp --help` and the `sqry-mcp-redaction` README in the sqry repo.
+Set `SQRY_REDACTION_PRESET` in the process environment before launching `sqry-mcp` (Vibe does not always expose per-server env in TOML; use a wrapper script or shell export if needed). Presets: `none|minimal|relative|standard|strict` (default `minimal`). See `sqry-mcp --help` and the `sqry-mcp-redaction` crate README in the sqry repo.
 
 ## Skill Dependency
 
-Also load `sqry-semantic-search`. It contains the shared routing rules, CLI fallback commands, ambiguity handling, output-size limits, and rebuild recovery steps.
+Also load `sqry-semantic-search`. It contains the shared routing rules, the table of all 39 tools with their required arguments, CLI fallback commands, ambiguity handling, output-size limits, and rebuild recovery steps.
 
 ## Tool Naming
 
@@ -88,16 +88,17 @@ When sqry is configured under the name `sqry`, Vibe exposes its tools under that
 
 ## CLI Fallback
 
-Vibe can run shell commands via its `bash` tool, so the CLI is a reliable path whenever MCP is not connected. From the workspace root:
+Vibe can run shell commands via its `bash` tool, so the CLI is a reliable path whenever MCP is not connected. From the workspace root, with flags before the positional query:
 
 ```bash
-sqry query 'kind:function AND name:authenticate' --json
-sqry graph direct-callers "AuthService::authenticate" --json
-sqry impact "AuthService::authenticate" --json
+sqry query --json 'kind:function AND name:authenticate'
+sqry graph direct-callers --json "AuthService::authenticate"
+sqry impact --json "AuthService::authenticate"
 sqry cycles --json
-sqry diff HEAD~1 HEAD --json
-sqry ask "where is the retry logic implemented?"
+sqry diff --json HEAD~1 HEAD
 ```
+
+There is no natural-language command (`sqry ask` was removed in sqry v21); turn the question into one of the structured commands above.
 
 ## Recommended System-Prompt Addition
 
@@ -106,8 +107,8 @@ Vibe routes behaviour through custom system prompts, not an `AGENTS.md`. Create 
 ```markdown
 ## Code Search
 
-For structural code questions — callers, callees, references, imports,
-call paths, dependency impact, cycles, unused symbols, semantic diffs —
+For structural code questions (callers, callees, references, imports,
+call paths, dependency impact, cycles, unused symbols, semantic diffs)
 prefer sqry (CLI or MCP tools when connected) over grep and file-read tools.
 Use grep for literal text search and file listing for filename discovery.
 
@@ -125,5 +126,5 @@ set `SQRY_REDACTION_PRESET=standard` (or `strict`) before launching sqry-mcp.
 - Empty results: run `sqry index .` from the project root, or `sqry index --force .` after an upgrade or stale graph warning.
 - Stale graph or unknown plugin IDs: remove `.sqry/graph`, `.sqry/graphs`, and `.sqry/analysis`, then rebuild.
 - Cannot read `sqry://meta/manifest`: switch to standalone `sqry-mcp --no-daemon` (daemon serves zero resources).
-- Fewer tools than expected: you are likely on daemon-hosted MCP. Use standalone `sqry-mcp` for the full surface.
+- Fewer tools than expected (17 instead of 39): you are on daemon-hosted MCP. Keep `args = ["--no-daemon"]` for the full surface.
 - 404 on `sqry://meta/manifest`: old server version; upgrade sqry.

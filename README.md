@@ -1,8 +1,8 @@
 # sqry Skills + Plugin
 
-Agent skills and first-class plugin for [sqry](https://github.com/verivus-oss/sqry) — AST-based semantic code search (compiler-grade, not embeddings).
+Agent skills and first-class plugin for [sqry](https://github.com/verivus-oss/sqry), AST-based semantic code search (compiler-grade, not embeddings).
 
-These skills and the plugin bundle are aligned with public `verivus-oss/sqry` v20.0.5
+These skills and the plugin bundle are aligned with public `verivus-oss/sqry` v31.0.0 (measured against the released binaries and the `v31.0.0` tag).
 
 ## Plugin Installation (Recommended for Grok Build & Claude Code)
 
@@ -18,14 +18,14 @@ git clone --depth 1 https://github.com/verivus-oss/sqry-skills ~/.grok/plugins/s
 ```
 
 Then in the Grok TUI:
-- `/plugins` → enable `sqry`
+- `/plugins` and enable `sqry`
 - `/reload-plugins`
 - `/skills` and `/mcps` will now show sqry entries
 
 **Benefits**:
 - All 8 skills auto-loaded (namespaced under the `sqry` plugin)
-- `sqry-mcp` auto-registered via `.mcp.json` (standalone `--no-daemon`: 39 tools + MCP docs resources)
-- `sqry-lsp` registered via `.lsp.json`
+- `sqry-mcp` auto-registered via `.mcp.json` (standalone `--no-daemon`: 39 tools, 6 MCP resources, 6 prompts)
+- `sqry-lsp` registered via `.lsp.json` (extension map generated from `sqry --list-languages` with high-cost plugins included)
 - `scripts/doctor.sh` and `scripts/install-sqry.sh` available
 - Works for Grok Build, Claude Code, and other Claude-compat hosts with **zero extra config**
 
@@ -56,7 +56,7 @@ npx skills add https://github.com/verivus-oss/sqry-skills --skill sqry-mistralvi
 
 | Skill | Agent | Description |
 |-------|-------|-------------|
-| [sqry-semantic-search](skills/sqry-semantic-search/) | All | Core skill: MCP routing, CLI fallback, disambiguation, output size guidance |
+| [sqry-semantic-search](skills/sqry-semantic-search/) | All | Core skill: MCP routing, the 17-tool reference with required arguments, CLI fallback, disambiguation, output size guidance |
 | [sqry-claude](skills/sqry-claude/) | Claude Code | Setup and MCP configuration for Claude Code |
 | [sqry-codex](skills/sqry-codex/) | OpenAI Codex | Setup and MCP configuration for Codex CLI (`~/.codex/config.toml`) |
 | [sqry-gemini](skills/sqry-gemini/) | Gemini CLI | Setup and MCP configuration for Gemini CLI (`~/.gemini/settings.json`) |
@@ -65,20 +65,21 @@ npx skills add https://github.com/verivus-oss/sqry-skills --skill sqry-mistralvi
 | [sqry-antigravity](skills/sqry-antigravity/) | Antigravity | Setup and MCP configuration for Google Antigravity IDE and CLI |
 | [sqry-mistralvibe](skills/sqry-mistralvibe/) | Mistral Vibe | CLI-first usage and `config.toml` MCP setup for the Vibe CLI |
 
-> **Note**: Skills now live under the `skills/` subdirectory (modern layout). Both `npx skills add` (recursive discovery) and Grok/Claude plugin auto-discovery continue to work. The plugin layout also provides `.mcp.json` / `.lsp.json` and scripts.
+> **Note**: Skills live under the `skills/` subdirectory. Both `npx skills add` (recursive discovery) and Grok/Claude plugin auto-discovery work with this layout. The plugin layout also provides `.mcp.json` / `.lsp.json` and scripts.
 
 ## Doctor & Scripts
 
-The plugin includes two scripts in `scripts/`:
+The plugin includes three scripts in `scripts/`:
 
-- `install-sqry.sh` — thin wrapper around the official sqry installer (`--component all`).
-- `doctor.sh` — comprehensive health check:
+- `install-sqry.sh`: thin wrapper around the official sqry installer (`--component all`, default install dir `~/.local/bin`).
+- `doctor.sh`: health check:
   - Binary presence + version (sqry, sqry-mcp, sqry-lsp, sqryd)
-  - Index health via `sqry index --status --json`
-  - Graph staleness heuristics + manifest checks
-  - MCP config scan across `.claude.json`, `~/.grok/config.toml`, Codex/Gemini locations, `sqry mcp status`
+  - Index health via `sqry index --status --json .` (`file_count`, `symbol_count`, `stale`)
+  - Graph manifest checks (`snapshot_format_version`, `build_provenance.sqry_version`, `node_count`) and the `snapshot.sqry` magic
+  - MCP config scan across `.claude.json`, `~/.grok/config.toml`, Codex, Gemini, Vibe and OpenCode locations, plus `sqry mcp status --json`
   - Plugin context verification
   - Quick functional query test
+- `sync-versions.sh`: rewrites every pinned version, tool count, language count and snapshot format in this repo from the live `sqry://meta/manifest`.
 
 ```bash
 # From project root (or specify workspace)
@@ -91,7 +92,7 @@ The plugin includes two scripts in `scripts/`:
 ~/.grok/plugins/sqry/scripts/doctor.sh --verbose
 ```
 
-`doctor.sh` exits 0 (healthy), 1 (warnings), or 2 (critical). It is the single command to run when Grok or Claude reports "unknown plugin IDs", empty results, or transport errors.
+`doctor.sh` exits 0 (healthy), 1 (warnings), or 2 (critical). It is the single command to run when Grok or Claude reports "unknown plugin IDs", empty results, or transport errors. sqry itself ships `sqry doctor channels` for diagnosing a stable and a dev channel installed side by side.
 
 ## Marketplace Path (Grok + Claude)
 
@@ -121,11 +122,11 @@ This is the "include sqry" route that requires no xAI approval.
 
 **Immediate (this plugin)**: Local stdio `sqry-mcp` / `sqry-lsp` via Grok Build / Claude Code plugin system. Full skills + auto-MCP + doctor today.
 
-**Later**: Remote MCP (HTTPS Streaming or SSE) for Grok web/API "Custom MCP connectors". The current `sqry-mcp` is stdio-only; a hosted bridge or HTTP/SSE mode in sqry will be needed. The plugin remains the local experience for the CLI/TUI.
+**Later**: Remote MCP (HTTPS Streaming or SSE) for Grok web/API "Custom MCP connectors". The current `sqry-mcp` is stdio-only (JSON-RPC 2.0, newline-delimited, MCP protocol 2024-11-05); a hosted bridge or HTTP/SSE mode in sqry will be needed. The plugin remains the local experience for the CLI/TUI.
 
 ## Architecture: Live MCP Resources + Reliable CLI Fallback
 
-sqry skills use a resource delegation architecture. Tool reference, query syntax, workflow recipes, and language support are served live by the `sqry-mcp` binary as MCP resources, so they match the installed sqry version.
+sqry skills use a resource delegation architecture. Full parameter reference, query syntax, workflow recipes, and language support are served live by the `sqry-mcp` binary as MCP resources, so they match the installed sqry version. `sqry-semantic-search` carries a compact table of all 39 tools with their required arguments, so an agent can pick and call a tool before reading the live guide.
 
 Skills contain stable, agent-facing content:
 
@@ -147,17 +148,23 @@ When sqry adds tools or languages, upgrade the sqry binary and read the live MCP
 | `sqry://docs/patterns` | Workflow recipes |
 | `sqry://docs/architecture` | Graph internals |
 
+### MCP Prompts
+
+Standalone `sqry-mcp` also serves 6 prompts (`semantic_search`, `find_callers`, `find_callees`, `trace_path`, `explain_symbol`, `code_impact`). Claude Code exposes them as `/mcp__sqry__<name>` slash commands.
+
 ## Current sqry Notes
 
-Public `verivus-oss/sqry` v20.0.5 uses:
+Public `verivus-oss/sqry` v31.0.0 uses:
 
 - Rust 1.94+, Edition 2024
-- 37 languages: 28 with full relation support, 9 with symbol extraction
-  - 37 MCP tools
-- snapshot format V7
-- default MCP redaction preset: `minimal`
-- default query timeout: 60s
-- default index timeout: 600s
+- 37 languages: 28 with full relation support, 9 with symbol extraction. The released binaries compile 30 of them (29 enabled by default, JSON with `--include-high-cost`); the other 7 (`pulumi`, `puppet`, `salesforce-apex`, `sap-abap`, `servicenow-xanadu`, `servicenow-xml`, `terraform`) are cargo features (`plugin-<id>`) and `sqry index --enable-plugin <id>` rejects them on a release binary
+- 39 MCP tools standalone, 17-tool subset when daemon-hosted
+- 6 MCP resources and 6 MCP prompts standalone, none when daemon-hosted
+- snapshot format 17 (`sqry://meta/manifest` `snapshot_format`; `snapshot.sqry` starts with `SQRY_GRAPH_V17`)
+- default MCP redaction preset: `minimal` (presets: `none`, `minimal`, `relative`, `standard`, `strict`)
+- default query timeout: 60s (`SQRY_MCP_TIMEOUT_MS`)
+- default index timeout: 600s (`SQRY_MCP_INDEX_TIMEOUT_MS`)
+- MCP responses capped at 50,000 bytes (`SQRY_MCP_MAX_OUTPUT_BYTES`)
 
 Install or upgrade sqry:
 
@@ -190,11 +197,11 @@ rm -rf .sqry/graph .sqry/graphs .sqry/analysis
 sqry index --force .
 ```
 
-The MCP manifest reports the compiled language/tool surface. The CLI `sqry --list-languages` command may show only the default-enabled language plugins unless high-cost or optional plugins are enabled for indexing.
+The MCP manifest reports the compiled language/tool surface. The CLI `sqry --list-languages` command shows only the enabled language plugins (29 by default, 30 with `SQRY_INCLUDE_HIGH_COST=1`); the manifest counts all 37 plugins in the source tree.
 
-**MCP mode:** Plugin `.mcp.json` uses standalone `sqry-mcp --no-daemon` (39 tools, six resources including `sqry://meta/manifest`). Daemon mode (`sqry-mcp --daemon`) exposes only 17 tools and zero MCP resources — use it only when you do not need manifest/docs resources.
+**MCP mode:** Plugin `.mcp.json` uses standalone `sqry-mcp --no-daemon` (39 tools, 6 resources including `sqry://meta/manifest`, 6 prompts). Daemon mode (`sqry-mcp --daemon`) exposes only a 17-tool subset and zero resources or prompts; use it only when you do not need manifest/docs resources. With no flag, `sqry-mcp` probes for a running `sqryd` and connects to it when one is reachable, so an unflagged entry can silently land on the 17-tool subset.
 
-After upgrading sqry, regenerate pinned version/tool-count lines in this repo:
+After upgrading sqry, regenerate the pinned version, tool count, language count and snapshot format lines in this repo:
 
 ```bash
 ./scripts/sync-versions.sh

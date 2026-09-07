@@ -1,15 +1,15 @@
 ---
 name: sqry-grok
-version: 20.0.5
+version: 31.0.0
 description: |
   Setup and workflow for using sqry semantic code search with Grok. Plugin-first for Grok Build (auto skills + MCP + doctor), CLI-first fallback, optional manual MCP, stale index recovery, and troubleshooting. Complements the sqry-semantic-search skill.
 ---
 
 # sqry for Grok
 
-Use this skill when the active agent is Grok and the user wants sqry semantic code search.
+Use this skill when the active agent is Grok and the user wants sqry v31.0.0 semantic code search.
 
-**Best path**: Install the sqry plugin (`.claude-plugin/` bundle). Grok Build auto-discovers it, loads all sqry skills, auto-registers `sqry-mcp` via `.mcp.json`, and makes `scripts/doctor.sh` available. Zero manual config.
+**Best path**: Install the sqry plugin (`.claude-plugin/` bundle). Grok Build auto-discovers it, loads all sqry skills, auto-registers `sqry-mcp --no-daemon` via `.mcp.json`, and makes `scripts/doctor.sh` available. Zero manual config.
 
 Grok can still use sqry in two ways (plugin makes #2 automatic):
 
@@ -21,13 +21,13 @@ Grok can still use sqry in two ways (plugin makes #2 automatic):
 The entire `sqry-skills` repository is a Claude-compatible plugin (`.claude-plugin/plugin.json` + `skills/` + `.mcp.json` + `.lsp.json` + `scripts/`).
 
 1. `git clone https://github.com/verivus-oss/sqry-skills ~/.grok/plugins/sqry`
-2. In Grok TUI: `/plugins` → enable `sqry` → `/reload-plugins`
+2. In Grok TUI: `/plugins`, enable `sqry`, then `/reload-plugins`
 3. `/skills` now lists the sqry skills; `/mcps` shows the auto-registered `sqry` server.
 4. Run `~/.grok/plugins/sqry/scripts/doctor.sh --workspace .` for full verification.
 
 The plugin also works in Claude Code and any host that reads Claude plugins.
 
-After enabling, you usually do **not** need the individual `sqry-*` skills via npx — the plugin provides them.
+After enabling, you usually do **not** need the individual `sqry-*` skills via npx; the plugin provides them.
 
 ## Setup (sqry Binary)
 
@@ -51,21 +51,20 @@ sqry index --status --json .
 
 ## CLI-First Usage
 
-Use the Grok shell command tool from the workspace root:
+Use the Grok shell command tool from the workspace root. Flags go before the positional query; predicates (`kind:`, `name:`, `lang:`, `path:`) belong to `sqry query`:
 
 ```bash
-sqry query 'kind:function AND name:execute' --json
-sqry query 'kind:class AND lang:typescript' --json
-sqry --kind class 'Manager|Executor|Recorder' --json
-sqry graph direct-callers "ApprovalManager" --json
-sqry graph direct-callees "main" --json
-sqry impact "Executor::run" --json
+sqry query --json 'kind:function AND name:execute'
+sqry query --json 'kind:class AND lang:typescript'
+sqry --json --kind class 'Manager|Executor|Recorder'
+sqry graph direct-callers --json "ApprovalManager"
+sqry graph direct-callees --json "main"
+sqry impact --json "Executor::run"
 sqry duplicates --json
 sqry cycles --json
-sqry ask "where is retry logic implemented?"
 ```
 
-Add `kind:`, `lang:`, and `path:` filters when a query is broad or hits a cost gate.
+There is no natural-language command (`sqry ask` was removed in sqry v21); turn the question into one of the structured commands above. Add `kind:`, `lang:`, and `path:` filters when a query is broad or hits a cost gate.
 
 ## Manual / Advanced MCP Integration (Fallback or Daemon)
 
@@ -82,6 +81,7 @@ Add or override an sqry server entry:
   "mcpServers": {
     "sqry": {
       "command": "/absolute/path/to/sqry-mcp",
+      "args": ["--no-daemon"],
       "env": {
         "SQRY_MCP_WORKSPACE_ROOT": "/absolute/path/to/project"
       }
@@ -92,15 +92,15 @@ Add or override an sqry server entry:
 
 ### MCP mode: standalone vs daemon
 
-The plugin `.mcp.json` uses standalone `sqry-mcp --no-daemon` by default (**39 tools**, **6 MCP resources** including `sqry://meta/manifest` and `sqry://docs/*`).
+The plugin `.mcp.json` uses standalone `sqry-mcp --no-daemon` by default (**39 tools**, **6 MCP resources** including `sqry://meta/manifest` and `sqry://docs/*`, **6 prompts**).
 
-**Daemon** (`sqry-mcp --daemon`) warms the graph for long sessions but exposes only a **17-tool subset** and **zero MCP resources** — agents cannot read `sqry://meta/manifest` or docs on the daemon path. Do not recommend daemon then instruct reading MCP resources in the same workflow.
+**Daemon** (`sqry-mcp --daemon`) warms the graph for long sessions but exposes only a **17-tool subset**, **zero MCP resources** and **zero prompts**: agents cannot read `sqry://meta/manifest` or docs on the daemon path. Do not recommend daemon then instruct reading MCP resources in the same workflow. With no flag at all, `sqry-mcp` probes for a running `sqryd` and connects to it when reachable.
 
 ```bash
-# Standalone — full tools + resources (preferred; plugin default)
+# Standalone: full tools + resources + prompts (preferred; plugin default)
 sqry-mcp --no-daemon
 
-# Daemon — warm graph, reduced tools, no resources
+# Daemon: warm graph, 17-tool subset, no resources
 sqry daemon start
 sqry daemon load .
 sqry-mcp --daemon
@@ -108,12 +108,12 @@ sqry-mcp --daemon
 
 Configure Grok with `"args": ["--daemon"]` only when you accept the 17-tool, no-resource tradeoff.
 
-After connecting, restart or refresh the Grok session and discover tools with the agent's MCP discovery mechanism. Some Grok environments expose canonical sqry tool names such as `semantic_search`, `direct_callers`, `get_references`, and `get_graph_stats` rather than `mcp__sqry__*` names.
+After connecting, restart or refresh the Grok session and discover tools with the agent's MCP discovery mechanism. Some Grok environments expose canonical sqry tool names such as `semantic_search`, `direct_callers`, `get_references`, and `get_graph_stats` rather than `mcp__sqry__*` names (`get_references` and `get_graph_stats` are standalone-only).
 
 ## Skill Dependency
 
 - **Plugin users**: `sqry-semantic-search` + `sqry-grok` are loaded together automatically when the `sqry` plugin is enabled.
-- **npx / non-plugin users**: Also load `sqry-semantic-search`. It contains the shared routing rules, ambiguity handling, output-size limits, and rebuild recovery steps.
+- **npx / non-plugin users**: Also load `sqry-semantic-search`. It contains the shared routing rules, the table of all 39 tools with their required arguments, ambiguity handling, output-size limits, and rebuild recovery steps.
 
 ## Recovery for Stale Graphs
 
@@ -134,8 +134,8 @@ sqry index --force .
 Validate with one narrow symbol query and one relation query:
 
 ```bash
-sqry query 'kind:function AND path:src' --json
-sqry graph direct-callers "<qualified-symbol>" --json
+sqry query --json 'kind:function AND path:src'
+sqry graph direct-callers --json "<qualified-symbol>"
 ```
 
 ## Recommended Project Instruction
@@ -144,7 +144,7 @@ sqry graph direct-callers "<qualified-symbol>" --json
 ## Code Search
 
 Use sqry for structural code search.
-- CLI: `sqry query 'kind:function AND name:foo'`, `sqry graph direct-callers <symbol>`, `sqry impact <symbol>`
+- CLI: `sqry query --json 'kind:function AND name:foo'`, `sqry graph direct-callers --json <symbol>`, `sqry impact --json <symbol>`
 - MCP: when sqry tools are visible, read `sqry://docs/capability-map` and use the returned sqry tools
 - Use native grep/rg only for literal text search
 ```
@@ -152,8 +152,9 @@ Use sqry for structural code search.
 ## Troubleshooting
 
 - No sqry MCP tools visible: enable the `sqry` plugin in Grok (`/plugins`), run `~/.grok/plugins/sqry/scripts/doctor.sh`, or use CLI fallback.
+- Fewer than 39 tools: the server entry lacks `--no-daemon` and a `sqryd` is running (17-tool subset).
 - Empty results or "unknown plugin IDs": run `scripts/doctor.sh --workspace .` (or `sqry index --force .` + `rm -rf .sqry/graph*` if needed).
 - Cost gate rejection: narrow with `kind:`, `lang:`, `path:`, or a more specific name.
 - Cannot read `sqry://meta/manifest`: switch to standalone `sqry-mcp --no-daemon` (daemon serves zero resources).
-- Daemon not responding: run `sqry daemon stop`, then `sqry daemon start` and `sqry daemon load .`.
+- Daemon not responding: run `sqry daemon stop`, then `sqry daemon start` and `sqry daemon load .`; `sqry daemon status --json` shows what is loaded.
 - Stale graph warnings: the doctor script detects this and suggests exact recovery commands.
