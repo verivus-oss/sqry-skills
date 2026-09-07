@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sync pinned sqry version + standalone MCP tool count from live sqry-mcp manifest.
-# Does NOT sync snapshot_format (use sqry://meta/manifest at runtime).
+# Sync every pinned sqry fact in this repo from the live binaries:
+#   version, standalone tool count, language count, snapshot format
+#   (all from sqry://meta/manifest served by standalone sqry-mcp), and the
+#   daemon-hosted tool count (measured with sqry-mcp --daemon when a sqryd
+#   socket is reachable; left unchanged otherwise).
+#
+# Pinned phrasing this script rewrites (keep prose in these shapes):
+#   "N tools" / "N MCP tools"      standalone sqry-mcp --no-daemon tool count
+#   "N-tool"                        daemon-hosted subset (for example "17-tool subset")
+#   "N languages"                   language plugin count
+#   "snapshot format N"             sqry://meta/manifest snapshot_format
+#   "version: X" (frontmatter), "vX" pins, EXPECTED_VERSION in doctor.sh
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -12,61 +22,61 @@ if ! command -v sqry-mcp >/dev/null 2>&1; then
   exit 1
 fi
 
-read_manifest() {
-  python3 - <<'PY'
+mcp_rpc() {
+  # $1 = sqry-mcp mode flag, $2 = method, $3 = params JSON
+  python3 - "$1" "$2" "$3" <<'PY'
 import json, subprocess, sys
-
-def rpc(method, rid, params=None):
-    p = subprocess.Popen(
-        ["sqry-mcp", "--no-daemon"],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        text=True,
-    )
-    msgs = [
-        {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "sync-versions", "version": "1"},
-            },
-        },
-        {"jsonrpc": "2.0", "method": "notifications/initialized"},
-        {"jsonrpc": "2.0", "id": rid, "method": method, "params": params or {}},
-    ]
-    for m in msgs:
-        p.stdin.write(json.dumps(m) + "\n")
-        p.stdin.flush()
-    while True:
-        line = p.stdout.readline()
-        if not line:
-            sys.exit("error: no MCP response")
-        obj = json.loads(line)
-        if obj.get("id") == rid:
-            p.terminate()
-            return obj
-
-resp = rpc("resources/read", 10, {"uri": "sqry://meta/manifest"})
-text = resp["result"]["contents"][0]["text"]
-manifest = json.loads(text)
-print(json.dumps({"version": manifest["version"], "tools": manifest["tools"]}))
+mode, method, params = sys.argv[1], sys.argv[2], json.loads(sys.argv[3])
+p = subprocess.Popen(["sqry-mcp", mode], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                     stderr=subprocess.DEVNULL, text=True)
+msgs = [
+    {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+        "protocolVersion": "2024-11-05", "capabilities": {},
+        "clientInfo": {"name": "sync-versions", "version": "1"}}},
+    {"jsonrpc": "2.0", "method": "notifications/initialized"},
+    {"jsonrpc": "2.0", "id": 10, "method": method, "params": params},
+]
+for m in msgs:
+    p.stdin.write(json.dumps(m) + "\n")
+    p.stdin.flush()
+while True:
+    line = p.stdout.readline()
+    if not line:
+        sys.exit("error: no MCP response")
+    obj = json.loads(line)
+    if obj.get("id") == 10:
+        p.terminate()
+        print(json.dumps(obj.get("result")))
+        break
 PY
 }
 
-MANIFEST_JSON="$(read_manifest)"
+MANIFEST_JSON="$(mcp_rpc --no-daemon resources/read '{"uri":"sqry://meta/manifest"}' | jq -r '.contents[0].text')"
 VERSION="$(echo "$MANIFEST_JSON" | jq -r '.version')"
 TOOLS="$(echo "$MANIFEST_JSON" | jq -r '.tools')"
+LANGS="$(echo "$MANIFEST_JSON" | jq -r '.languages.total')"
+SNAPSHOT="$(echo "$MANIFEST_JSON" | jq -r '.snapshot_format')"
 
-if [[ -z "$VERSION" || "$VERSION" == "null" || -z "$TOOLS" || "$TOOLS" == "null" ]]; then
-  echo "error: could not read version/tools from sqry://meta/manifest" >&2
-  exit 1
+for v in "$VERSION" "$TOOLS" "$LANGS" "$SNAPSHOT"; do
+  if [[ -z "$v" || "$v" == "null" ]]; then
+    echo "error: could not read version/tools/languages/snapshot_format from sqry://meta/manifest" >&2
+    exit 1
+  fi
+done
+
+# Daemon-hosted subset: only measurable against a running sqryd. Never auto-start one here.
+DAEMON_TOOLS=""
+if DAEMON_LIST="$(SQRY_DAEMON_NO_AUTO_START=1 timeout 20 bash -c "$(declare -f mcp_rpc); mcp_rpc --daemon tools/list '{}'" 2>/dev/null)"; then
+  DAEMON_TOOLS="$(echo "$DAEMON_LIST" | jq -r '.tools | length' 2>/dev/null || true)"
+fi
+if [[ -z "$DAEMON_TOOLS" || "$DAEMON_TOOLS" == "null" || "$DAEMON_TOOLS" == "0" ]]; then
+  DAEMON_TOOLS=""
+  echo "note: no reachable sqryd; daemon-hosted tool count left unchanged" >&2
 fi
 
-echo "Syncing from live MCP manifest: version=$VERSION tools=$TOOLS"
+echo "Syncing from live MCP manifest: version=$VERSION tools=$TOOLS languages=$LANGS snapshot_format=$SNAPSHOT daemon_tools=${DAEMON_TOOLS:-unchanged}"
+
+PROSE_FILES=(README.md scripts/install-sqry.sh skills/*/SKILL.md)
 
 # Skill frontmatter version (all skills/)
 for skill in skills/*/SKILL.md; do
@@ -74,31 +84,62 @@ for skill in skills/*/SKILL.md; do
   sed -i "s/^version: .*/version: ${VERSION}/" "$skill"
 done
 
-# sqry-semantic-search body pins
-SEMANTIC="skills/sqry-semantic-search/SKILL.md"
-sed -i "s|aligned with public \`verivus-oss/sqry\` v[0-9.]*|aligned with public \`verivus-oss/sqry\` v${VERSION}|" "$SEMANTIC"
-sed -i "s|^[[:space:]]*- [0-9]* MCP tools.*|  - ${TOOLS} MCP tools (standalone \`sqry-mcp\`; see daemon note below)|" "$SEMANTIC"
-
-# Host skill intro lines
-for host in sqry-claude sqry-codex sqry-gemini sqry-grok sqry-opencode sqry-antigravity sqry-mistralvibe; do
-  f="skills/${host}/SKILL.md"
+# Version pins in prose
+for f in "${PROSE_FILES[@]}"; do
   [[ -f "$f" ]] || continue
-  sed -i "s|sqry v[0-9.]* MCP-backed|sqry v${VERSION} MCP-backed|" "$f" 2>/dev/null || true
-  sed -i "s|sqry v[0-9.]* semantic code search|sqry v${VERSION} semantic code search|" "$f" 2>/dev/null || true
+  sed -i "s|aligned with public \`verivus-oss/sqry\` v[0-9.]*|aligned with public \`verivus-oss/sqry\` v${VERSION}|g" "$f"
+  sed -i "s|Public \`verivus-oss/sqry\` v[0-9.]* uses:|Public \`verivus-oss/sqry\` v${VERSION} uses:|" "$f"
+  sed -i "s|sqry v[0-9.]* MCP-backed|sqry v${VERSION} MCP-backed|g" "$f"
+  sed -i "s|sqry v[0-9.]* semantic code search|sqry v${VERSION} semantic code search|g" "$f"
+  sed -i "s|v[0-9]*\.[0-9]*\.[0-9]* (measured|v${VERSION} (measured|g" "$f"
+done
+
+# Counts in prose.
+#
+# These rewrites are ANCHORED to the exact phrasings the docs use, never to a
+# bare "<n> tools". The standalone and daemon counts are both counts of tools,
+# so a blanket rewrite of every count-shaped number corrupts one of them: an
+# earlier version of this script turned "the 17 tools a daemon-hosted
+# connection also serves" into "the 39 tools" and "the 39-tool reference" into
+# "the 17-tool reference". scripts/check-doc-counts.py fails the build on any
+# count phrasing it does not recognise, so a new sentence shape shows up as a
+# CI failure here rather than as a silent wrong number.
+for f in "${PROSE_FILES[@]}"; do
+  [[ -f "$f" ]] || continue
+
+  # Standalone tool count.
+  sed -i -E "s/([Ss]erves \*\*)[0-9]+( tools\*\*)/\1${TOOLS}\2/g" "$f"
+  sed -i -E "s/\(\*\*[0-9]+( tools\*\*)/(**${TOOLS}\1/g" "$f"
+  sed -i -E "s/\b[0-9]+( MCP tools standalone)/${TOOLS}\1/g" "$f"
+  sed -i -E "s/(table of all )[0-9]+( tools)/\1${TOOLS}\2/g" "$f"
+  sed -i -E "s/(reference to all )[0-9]+( tools)/\1${TOOLS}\2/g" "$f"
+  sed -i -E "s/([Ff]ewer than )[0-9]+( tools)/\1${TOOLS}\2/g" "$f"
+  sed -i -E "s/(# )[0-9]+( tools, 6 prompts)/\1${TOOLS}\2/g" "$f"
+  sed -i -E "s/([0-9]+ languages, )[0-9]+( tools)/\1${TOOLS}\2/g" "$f"
+
+  # Language count.
+  sed -i -E "s/\b[0-9]+( languages: [0-9]+ (with full relation|full-relation))/${LANGS}\1/g" "$f"
+
+  # Snapshot format.
+  sed -i -E "s/(snapshot format )[0-9]+/\1${SNAPSHOT}/g" "$f"
+
+  # Daemon-hosted subset count.
+  if [[ -n "$DAEMON_TOOLS" ]]; then
+    sed -i -E "s/\b[0-9]+(-tool subset)/${DAEMON_TOOLS}\1/g" "$f"
+    sed -i -E "s/\b[0-9]+(-tool, no-resource)/${DAEMON_TOOLS}\1/g" "$f"
+    sed -i -E "s/(marks the )[0-9]+( tools that a daemon-hosted)/\1${DAEMON_TOOLS}\2/g" "$f"
+    sed -i -E "s/(warm graph; )[0-9]+( tools)/\1${DAEMON_TOOLS}\2/g" "$f"
+    sed -i -E "s/\(([0-9]+) instead of [0-9]+\)/(${DAEMON_TOOLS} instead of ${TOOLS})/g" "$f"
+  fi
 done
 
 # plugin.json
-jq --arg v "$VERSION" --argjson t "$TOOLS" \
-  '.version = $v | .description = "AST-based semantic code search (compiler-grade, not embeddings). Skills + MCP (sqry-mcp) + LSP (sqry-lsp) for Grok Build, Claude Code, and compatible agents. 37 languages, \($t) tools, live resources from sqry-mcp binary."' \
+jq --arg v "$VERSION" --argjson t "$TOOLS" --argjson l "$LANGS" \
+  '.version = $v | .description = "AST-based semantic code search (compiler-grade, not embeddings). Skills + MCP (sqry-mcp) + LSP (sqry-lsp) for Grok Build, Claude Code, and compatible agents. \($l) languages, \($t) tools, live resources from sqry-mcp binary."' \
   .claude-plugin/plugin.json > .claude-plugin/plugin.json.tmp
 mv .claude-plugin/plugin.json.tmp .claude-plugin/plugin.json
 
 # doctor.sh expected version
 sed -i "s/^EXPECTED_VERSION=\".*\"/EXPECTED_VERSION=\"${VERSION}\"/" scripts/doctor.sh
 
-# README pinned version + tool count only (not snapshot format)
-sed -i "s|aligned with public \`verivus-oss/sqry\` v[0-9.]*|aligned with public \`verivus-oss/sqry\` v${VERSION}|" README.md
-sed -i "s|Public \`verivus-oss/sqry\` v[0-9.]* uses:|Public \`verivus-oss/sqry\` v${VERSION} uses:|" README.md
-sed -i "s|^[[:space:]]*- [0-9]* MCP tools$|  - ${TOOLS} MCP tools|" README.md
-
-echo "Updated: skills/*, plugin.json, doctor.sh, README.md (version + tool count)"
+echo "Updated: skills/*, plugin.json, doctor.sh, install-sqry.sh, README.md"

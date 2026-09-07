@@ -59,20 +59,45 @@ PATTERNS: dict[str, tuple[str, ...]] = {
         r"\(\*\*(\d+) tools\*\*",
         r"--no-daemon`: (\d+) tools",
         r"\((\d+) tools, six resources",
-        r"# (\d+) tools, sqry://",
+        r"\((\d+) tools, 6 MCP resources",
+        r"# (\d+) tools, 6 prompts",
         r"\d+ languages, (\d+) tools",
+        r"(\d+) MCP tools standalone",
+        r"table of all (\d+) tools",
+        r"reference to all (\d+) tools",
+        r"[Ff]ewer than (\d+) tools",
+        r"(\d+) tools, 6 resources",
+        r"instead of (\d+)\)",
     ),
     "daemon_tools": (
         r"\*\*(\d+)-tool subset\*\*",
+        r"(\d+)-tool subset",
+        r"(\d+)-tool daemon subset",
         r"(\d+)-tool, no-resource",
         r"only (\d+) tools and zero MCP resources",
         r"warm graph; (\d+) tools",
+        r"marks the (\d+) tools that a daemon-hosted",
+        r"\((\d+) instead of \d+\)",
     ),
     "mcp_resources": (
         r"\*\*(\d+) MCP resources\*\*",
+        r"(\d+) MCP resources and \d+ MCP prompts",
+        r"\d+ tools, (\d+) MCP resources",
+        r"\d+ tools, (\d+) resources",
+    ),
+    "mcp_prompts": (
+        r"\*\*(\d+) prompts\*\*",
+        r"\d+ MCP resources and (\d+) MCP prompts",
+        r"serves (\d+) prompts",
+        r"[Tt]he (\d+) MCP prompts",
+        r"\d+ tools, 6 resources, (\d+) prompts",
+        r"# \d+ tools, (\d+) prompts",
+        r"\d+ MCP resources, (\d+) prompts",
+        r"\d+ resources including `sqry://meta/manifest`, (\d+) prompts",
     ),
     "languages": (
-        r"(\d+) languages",
+        r"(\d+) languages: \d+ (?:with full relation|full-relation)",
+        r"(\d+) languages, \d+ tools",
     ),
 }
 
@@ -80,7 +105,7 @@ PATTERNS: dict[str, tuple[str, ...]] = {
 # able to verify. There is deliberately no line-level allowlist here: an
 # earlier version skipped any line mentioning `sqry://`, which silently
 # disabled the guard on almost every line that quotes a count.
-STRAY_NOUNS = r"\d+[- ](?:tool|resource|language)"
+STRAY_NOUNS = r"\d+[- ](?:tool|resource|language|prompt)"
 
 
 def run(cmd: list[str], **kw) -> str:
@@ -127,6 +152,7 @@ def ground_truth(binary: str, workspace: Path) -> dict[str, int]:
                         "clientInfo": {"name": "doc-counts", "version": "1"}}},
             {"jsonrpc": "2.0", "method": "notifications/initialized"},
             {"jsonrpc": "2.0", "id": 2, "method": "resources/list", "params": {}},
+            {"jsonrpc": "2.0", "id": 4, "method": "prompts/list", "params": {}},
             {"jsonrpc": "2.0", "id": 3, "method": "resources/read",
              "params": {"uri": "sqry://meta/manifest"}},
         ],
@@ -134,10 +160,13 @@ def ground_truth(binary: str, workspace: Path) -> dict[str, int]:
     )
     by_id = {r["id"]: r for r in responses if "id" in r and "result" in r}
 
-    if 2 not in by_id or 3 not in by_id:
-        sys.exit("error: sqry-mcp did not answer resources/list or the manifest read")
+    if 2 not in by_id or 3 not in by_id or 4 not in by_id:
+        sys.exit(
+            "error: sqry-mcp did not answer resources/list, prompts/list or the manifest read"
+        )
 
     resources = len(by_id[2]["result"]["resources"])
+    prompts = len(by_id[4]["result"]["prompts"])
     manifest = json.loads(by_id[3]["result"]["contents"][0]["text"])
 
     # Cross-check: the manifest tool count is derived from the live registry,
@@ -156,6 +185,7 @@ def ground_truth(binary: str, workspace: Path) -> dict[str, int]:
         "standalone_tools": standalone,
         "daemon_tools": daemon,
         "mcp_resources": resources,
+        "mcp_prompts": prompts,
         "languages": manifest["languages"]["total"],
         "_version": version,
     }

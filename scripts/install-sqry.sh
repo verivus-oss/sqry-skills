@@ -12,23 +12,23 @@ echo "Verifying installation:"
 for bin in sqry sqry-mcp sqry-lsp sqryd; do
   if command -v "$bin" >/dev/null 2>&1; then
     version=$("$bin" --version 2>/dev/null || echo "unknown")
-    echo "  ✓ $bin: $version"
+    echo "  ok  $bin: $version"
   else
-    echo "  ✗ $bin: not found in PATH"
+    echo "  missing  $bin: not found in PATH"
   fi
 done
 
 echo ""
 echo "Next steps:"
-echo "  1. Ensure the install dir (~/.local/bin or /usr/local/bin) is in your PATH"
+echo "  1. Ensure the install dir (default ~/.local/bin; --install-dir to change) is in your PATH"
 echo "  2. cd /path/to/your/project"
 echo "  3. sqry index ."
 echo "  4. sqry index --status --json ."
 echo "  5. Run ./scripts/doctor.sh (from this plugin) to verify full setup"
 echo ""
 echo "For MCP with full tools + docs resources (default):"
-echo "  sqry-mcp --no-daemon   # 39 tools, sqry://meta/manifest and sqry://docs/*"
+echo "  sqry-mcp --no-daemon   # 39 tools, 6 prompts, sqry://meta/manifest and sqry://docs/*"
 echo ""
-echo "For daemon-backed MCP (warm graph; 17 tools, zero MCP resources):"
+echo "For daemon-backed MCP (warm graph; 17-tool subset, zero MCP resources, zero prompts):"
 echo "  sqry daemon start && sqry daemon load . && sqry-mcp --daemon"
 echo "  Do not use daemon mode when agents need sqry://meta/manifest or sqry://docs/*"
