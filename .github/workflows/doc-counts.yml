@@ -1,0 +1,78 @@
+name: "Doc counts"
+
+# This package quotes four numbers about the sqry MCP surface: the standalone
+# tool count, the daemon-hosted subset, the MCP resource count, and the
+# language count. All four live in prose, and all four go stale whenever sqry
+# ships a release, not when this repo changes. That is how the skills came to
+# advertise 37 tools / a 16-tool subset while sqry shipped 39 and 17.
+#
+# So the schedule below is the point of this workflow, not a nicety: a
+# push-only trigger would never have caught that drift, because no push
+# happened here. The weekly run installs the sqry-mcp users actually get and
+# compares it against what the docs claim.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "skills/**"
+      - "README.md"
+      - "scripts/install-sqry.sh"
+      - ".claude-plugin/plugin.json"
+      - "scripts/check-doc-counts.py"
+      - ".github/workflows/doc-counts.yml"
+  pull_request:
+    paths:
+      - "skills/**"
+      - "README.md"
+      - "scripts/install-sqry.sh"
+      - ".claude-plugin/plugin.json"
+      - "scripts/check-doc-counts.py"
+      - ".github/workflows/doc-counts.yml"
+  schedule:
+    # Mondays 05:00 UTC. Catches a new sqry release that moved the counts
+    # without anyone touching this repository.
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: doc-counts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Verify documented counts against shipped sqry
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install sqry-mcp
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/verivus-oss/sqry/main/scripts/install.sh \
+            | bash -s -- --component sqry-mcp
+          # The installer puts binaries in ~/.local/bin or /usr/local/bin.
+          found=""
+          for d in "$HOME/.local/bin" /usr/local/bin "$HOME/bin"; do
+            if [ -x "$d/sqry-mcp" ]; then
+              echo "$d" >> "$GITHUB_PATH"
+              found="$d/sqry-mcp"
+              break
+            fi
+          done
+          if [ -z "$found" ]; then
+            echo "::error::sqry-mcp not found after install. Searched ~/.local/bin, /usr/local/bin, ~/bin." >&2
+            exit 1
+          fi
+          echo "Installed: $found"
+
+      - name: Show resolved surface
+        run: sqry-mcp --version && python3 scripts/check-doc-counts.py --show
+
+      - name: Check documented counts
+        run: python3 scripts/check-doc-counts.py
