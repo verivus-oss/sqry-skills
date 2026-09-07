@@ -150,7 +150,7 @@ MCP tool names can be host-specific. Claude Code, Codex, and Gemini commonly exp
 
 ### Tool reference (v31.0.0, standalone `sqry-mcp --no-daemon`)
 
-Required arguments come from the live `tools/list` schema. Every tool also accepts optional `path` (workspace root, default `.`). Where a tool lists `max_results` it is optional with the default shown. "Daemon" marks the 39 tools that a daemon-hosted connection also serves.
+Required arguments come from the live `tools/list` schema. Every tool also accepts optional `path` (workspace root, default `.`). Where a tool lists `max_results` it is optional with the default shown. "Daemon" marks the 17 tools that a daemon-hosted connection also serves.
 
 | Tool | Required arguments | Daemon | Purpose |
 |------|--------------------|--------|---------|

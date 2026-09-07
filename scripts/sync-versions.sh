@@ -94,14 +94,42 @@ for f in "${PROSE_FILES[@]}"; do
   sed -i "s|v[0-9]*\.[0-9]*\.[0-9]* (measured|v${VERSION} (measured|g" "$f"
 done
 
-# Counts and formats in prose
+# Counts in prose.
+#
+# These rewrites are ANCHORED to the exact phrasings the docs use, never to a
+# bare "<n> tools". The standalone and daemon counts are both counts of tools,
+# so a blanket rewrite of every count-shaped number corrupts one of them: an
+# earlier version of this script turned "the 17 tools a daemon-hosted
+# connection also serves" into "the 39 tools" and "the 39-tool reference" into
+# "the 17-tool reference". scripts/check-doc-counts.py fails the build on any
+# count phrasing it does not recognise, so a new sentence shape shows up as a
+# CI failure here rather than as a silent wrong number.
 for f in "${PROSE_FILES[@]}"; do
   [[ -f "$f" ]] || continue
-  sed -i -E "s/\b[0-9]+ (MCP )?tools\b/${TOOLS} \1tools/g" "$f"
-  sed -i -E "s/\b[0-9]+ languages\b/${LANGS} languages/g" "$f"
-  sed -i -E "s/\bsnapshot format [0-9]+\b/snapshot format ${SNAPSHOT}/g" "$f"
+
+  # Standalone tool count.
+  sed -i -E "s/([Ss]erves \*\*)[0-9]+( tools\*\*)/\1${TOOLS}\2/g" "$f"
+  sed -i -E "s/\(\*\*[0-9]+( tools\*\*)/(**${TOOLS}\1/g" "$f"
+  sed -i -E "s/\b[0-9]+( MCP tools standalone)/${TOOLS}\1/g" "$f"
+  sed -i -E "s/(table of all )[0-9]+( tools)/\1${TOOLS}\2/g" "$f"
+  sed -i -E "s/(reference to all )[0-9]+( tools)/\1${TOOLS}\2/g" "$f"
+  sed -i -E "s/([Ff]ewer than )[0-9]+( tools)/\1${TOOLS}\2/g" "$f"
+  sed -i -E "s/(# )[0-9]+( tools, 6 prompts)/\1${TOOLS}\2/g" "$f"
+  sed -i -E "s/([0-9]+ languages, )[0-9]+( tools)/\1${TOOLS}\2/g" "$f"
+
+  # Language count.
+  sed -i -E "s/\b[0-9]+( languages: [0-9]+ (with full relation|full-relation))/${LANGS}\1/g" "$f"
+
+  # Snapshot format.
+  sed -i -E "s/(snapshot format )[0-9]+/\1${SNAPSHOT}/g" "$f"
+
+  # Daemon-hosted subset count.
   if [[ -n "$DAEMON_TOOLS" ]]; then
-    sed -i -E "s/\b[0-9]+-tool\b/${DAEMON_TOOLS}-tool/g" "$f"
+    sed -i -E "s/\b[0-9]+(-tool subset)/${DAEMON_TOOLS}\1/g" "$f"
+    sed -i -E "s/\b[0-9]+(-tool, no-resource)/${DAEMON_TOOLS}\1/g" "$f"
+    sed -i -E "s/(marks the )[0-9]+( tools that a daemon-hosted)/\1${DAEMON_TOOLS}\2/g" "$f"
+    sed -i -E "s/(warm graph; )[0-9]+( tools)/\1${DAEMON_TOOLS}\2/g" "$f"
+    sed -i -E "s/\(([0-9]+) instead of [0-9]+\)/(${DAEMON_TOOLS} instead of ${TOOLS})/g" "$f"
   fi
 done
 

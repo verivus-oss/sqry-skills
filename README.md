@@ -56,7 +56,7 @@ npx skills add https://github.com/verivus-oss/sqry-skills --skill sqry-mistralvi
 
 | Skill | Agent | Description |
 |-------|-------|-------------|
-| [sqry-semantic-search](skills/sqry-semantic-search/) | All | Core skill: MCP routing, the 17-tool reference with required arguments, CLI fallback, disambiguation, output size guidance |
+| [sqry-semantic-search](skills/sqry-semantic-search/) | All | Core skill: MCP routing, the reference to all 39 tools with required arguments, CLI fallback, disambiguation, output size guidance |
 | [sqry-claude](skills/sqry-claude/) | Claude Code | Setup and MCP configuration for Claude Code |
 | [sqry-codex](skills/sqry-codex/) | OpenAI Codex | Setup and MCP configuration for Codex CLI (`~/.codex/config.toml`) |
 | [sqry-gemini](skills/sqry-gemini/) | Gemini CLI | Setup and MCP configuration for Gemini CLI (`~/.gemini/settings.json`) |
